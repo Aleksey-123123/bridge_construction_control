@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Вход — Счета и КП{% endblock %}
+{% block content %}
+<h1>Вход</h1>
+<form class="form" method="post">
+  {% if error %}<div class="flash">{{ error }}</div>{% endif %}
+  <label>Пароль</label>
+  <input type="password" name="password" autofocus>
+  <div class="form-actions">
+    <button class="btn btn-primary btn-big" type="submit">Войти</button>
+  </div>
+</form>
+{% endblock %}

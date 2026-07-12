@@ -1,0 +1,11 @@
+services:
+  invoices:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      # Задайте общий пароль для входа (пусто = без пароля)
+      - APP_PASSWORD=${APP_PASSWORD:-}
+    restart: unless-stopped

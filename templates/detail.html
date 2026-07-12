@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ DOC_TYPES[invoice.doc_type] }} {{ invoice.number or '' }} — Счета и КП{% endblock %}
+{% block content %}
+
+<div class="detail-head">
+  <div>
+    <span class="badge badge-{{ invoice.doc_type }}">{{ DOC_TYPES[invoice.doc_type] }}{% if invoice.number %} № {{ invoice.number }}{% endif %}</span>
+    <span class="badge badge-status-{{ invoice.status }}">{{ STATUSES[invoice.status] }}</span>
+  </div>
+  <a class="btn" href="{{ url_for('invoice_edit', invoice_id=invoice.id) }}">✏ Изменить</a>
+</div>
+
+<div class="detail-amount">{{ invoice.amount|money }} ₽
+  <small>{{ VAT_LABELS[invoice.vat_rate] }}{% if vat_amount(invoice.amount, invoice.vat_rate) %} — {{ vat_amount(invoice.amount, invoice.vat_rate)|money }} ₽{% endif %}</small>
+</div>
+
+<div class="statusbar">
+  {% if invoice.status != 'new' %}
+  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
+    <input type="hidden" name="status" value="new">
+    <button class="btn" type="submit">↩ Вернуть во «Входящие»</button>
+  </form>
+  {% endif %}
+  {% if invoice.status == 'new' %}
+  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
+    <input type="hidden" name="status" value="paid">
+    <button class="btn btn-paid btn-big" type="submit">✔ Оплачен</button>
+  </form>
+  {% endif %}
+  {% if invoice.status != 'received' %}
+  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
+    <input type="hidden" name="status" value="received">
+    <button class="btn btn-received btn-big" type="submit">📦 Забрали</button>
+  </form>
+  {% endif %}
+</div>
+
+<dl class="props">
+  <dt>Проект</dt><dd>{{ invoice.project_name }}</dd>
+  <dt>Поставщик</dt><dd>{{ invoice.supplier_name or '—' }}</dd>
+  <dt>Контакты</dt><dd class="pre">{{ invoice.supplier_contacts or '—' }}</dd>
+  <dt>Откуда и как забирать</dt><dd class="pre">{{ invoice.pickup_info or '—' }}</dd>
+  <dt>Комментарий</dt><dd class="pre">{{ invoice.comment or '—' }}</dd>
+  <dt>Создан</dt><dd>{{ invoice.created_at }}</dd>
+  {% if invoice.paid_at %}<dt>Оплачен</dt><dd>{{ invoice.paid_at }}</dd>{% endif %}
+  {% if invoice.received_at %}<dt>Забрали</dt><dd>{{ invoice.received_at }}</dd>{% endif %}
+</dl>
+
+<h2>Файлы</h2>
+{% if attachments %}
+<ul class="files">
+  {% for a in attachments %}
+  <li>
+    <a href="{{ url_for('download_file', attachment_id=a.id) }}">📎 {{ a.original_name }}</a>
+    <form method="post" action="{{ url_for('attachment_delete', attachment_id=a.id) }}"
+          onsubmit="return confirm('Удалить файл?')">
+      <button class="btn btn-sm" type="submit">✕</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">Файлы не приложены. Добавить можно через «Изменить».</p>
+{% endif %}
+
+<form class="danger-zone" method="post" action="{{ url_for('invoice_delete', invoice_id=invoice.id) }}"
+      onsubmit="return confirm('Удалить запись целиком вместе с файлами?')">
+  <button class="btn btn-danger" type="submit">Удалить запись</button>
+</form>
+
+{% endblock %}

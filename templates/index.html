@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<form class="filters" method="get" action="{{ url_for('index') }}">
+  <select name="project" onchange="this.form.submit()">
+    <option value="">Все проекты</option>
+    {% for p in projects %}
+      <option value="{{ p.id }}" {% if request.args.get('project') == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="type" onchange="this.form.submit()">
+    <option value="">Счета и КП</option>
+    {% for k, v in DOC_TYPES.items() %}
+      <option value="{{ k }}" {% if request.args.get('type') == k %}selected{% endif %}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Все статусы</option>
+    {% for k, v in STATUSES.items() %}
+      <option value="{{ k }}" {% if request.args.get('status') == k %}selected{% endif %}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <div class="search-row">
+    <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Поиск: поставщик, номер…">
+    <button class="btn" type="submit">Найти</button>
+  </div>
+</form>
+
+<div class="summary">
+  <span class="chip">Записей: <b>{{ invoices|length }}</b></span>
+  <span class="chip">Сумма: <b>{{ total|money }} ₽</b></span>
+  <span class="chip">в т.ч. НДС: <b>{{ total_vat|money }} ₽</b></span>
+  <a class="chip chip-link" href="{{ url_for('export_csv', **request.args) }}">⬇ Excel (CSV)</a>
+</div>
+
+{% if not invoices %}
+  <p class="empty">Пока нет записей. Нажмите «+ Добавить», чтобы внести первый счёт или КП.</p>
+{% endif %}
+
+<div class="cards">
+{% for i in invoices %}
+  <a class="card status-{{ i.status }}" href="{{ url_for('invoice_detail', invoice_id=i.id) }}">
+    <div class="card-top">
+      <span class="badge badge-{{ i.doc_type }}">{{ DOC_TYPES[i.doc_type] }}{% if i.number %} № {{ i.number }}{% endif %}</span>
+      <span class="badge badge-status-{{ i.status }}">{{ STATUSES[i.status] }}</span>
+    </div>
+    <div class="card-main">
+      <div class="card-supplier">{{ i.supplier_name or 'Поставщик не указан' }}</div>
+      <div class="card-amount">{{ i.amount|money }} ₽</div>
+    </div>
+    <div class="card-sub">
+      <span>{{ i.project_name }}</span>
+      <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>
+    </div>
+  </a>
+{% endfor %}
+</div>
+
+{% endblock %}
