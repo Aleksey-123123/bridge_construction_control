@@ -75,6 +75,7 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .card-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .card-supplier { font-weight: 600; }
 .card-amount { font-weight: 700; white-space: nowrap; }
+.card-note { margin-top: 6px; color: #475569; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-sub { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
 
 .badge {

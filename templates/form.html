@@ -30,10 +30,16 @@
   <input type="text" name="number" value="{{ invoice.number if invoice else '' }}" placeholder="Например: 154 от 10.07.2026">
 
   <label>Поставщик</label>
-  <input type="text" name="supplier_name" value="{{ invoice.supplier_name if invoice else '' }}" placeholder="ООО «Металл-Сервис»">
+  <select name="supplier_id" id="supplier_select">
+    <option value="" data-contacts="">— выберите поставщика —</option>
+    {% for s in suppliers %}
+      <option value="{{ s.id }}" data-contacts="{{ s.contacts }}" {% if invoice and invoice.supplier_name == s.name %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="new_supplier" placeholder="…или впишите нового поставщика">
 
   <label>Контакты поставщика</label>
-  <textarea name="supplier_contacts" rows="2" placeholder="Телефон, имя менеджера, email">{{ invoice.supplier_contacts if invoice else '' }}</textarea>
+  <textarea name="supplier_contacts" id="supplier_contacts" rows="2" placeholder="Телефон, имя менеджера, email">{{ invoice.supplier_contacts if invoice else '' }}</textarea>
 
   <label>Откуда и как забирать</label>
   <textarea name="pickup_info" rows="2" placeholder="Адрес склада, режим работы, самовывоз/доставка, пропуск и т.п.">{{ invoice.pickup_info if invoice else '' }}</textarea>
@@ -64,5 +70,21 @@
     <a class="btn btn-big" href="{{ url_for('invoice_detail', invoice_id=invoice.id) if invoice else url_for('index') }}">Отмена</a>
   </div>
 </form>
+
+<script>
+(function () {
+  var sel = document.getElementById('supplier_select');
+  var box = document.getElementById('supplier_contacts');
+  var newInput = document.querySelector('input[name="new_supplier"]');
+  if (sel && box) {
+    sel.addEventListener('change', function () {
+      var opt = sel.options[sel.selectedIndex];
+      var c = opt.getAttribute('data-contacts') || '';
+      if (c) box.value = c;            // подставляем сохранённые контакты
+      if (sel.value && newInput) newInput.value = '';
+    });
+  }
+})();
+</script>
 
 {% endblock %}

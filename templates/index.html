@@ -21,7 +21,7 @@
     {% endfor %}
   </select>
   <div class="search-row">
-    <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Поиск: поставщик, номер…">
+    <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Поиск: поставщик, номер, комментарий…">
     <button class="btn" type="submit">Найти</button>
   </div>
 </form>
@@ -48,6 +48,7 @@
       <div class="card-supplier">{{ i.supplier_name or 'Поставщик не указан' }}</div>
       <div class="card-amount">{{ i.amount|money }} ₽</div>
     </div>
+    {% if i.comment %}<div class="card-note">{{ i.comment|truncate(100, True, '…') }}</div>{% endif %}
     <div class="card-sub">
       <span>{{ i.project_name }}</span>
       <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>

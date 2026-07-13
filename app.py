@@ -51,6 +51,12 @@ CREATE TABLE IF NOT EXISTS projects (
     name TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS suppliers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    contacts TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL REFERENCES projects(id),
@@ -94,6 +100,18 @@ def close_db(_exc):
 
 with sqlite3.connect(DB_PATH) as _conn:
     _conn.executescript(SCHEMA)
+    # Один раз переносим уже внесённых поставщиков в справочник,
+    # чтобы они появились в выпадающем списке с их контактами.
+    if _conn.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0] == 0:
+        _conn.execute(
+            "INSERT OR IGNORE INTO suppliers (name, contacts, created_at) "
+            "SELECT i.supplier_name, "
+            "  (SELECT i2.supplier_contacts FROM invoices i2 "
+            "   WHERE i2.supplier_name = i.supplier_name "
+            "   ORDER BY i2.id DESC LIMIT 1), "
+            "  MIN(i.created_at) "
+            "FROM invoices i WHERE i.supplier_name <> '' "
+            "GROUP BY i.supplier_name")
 
 
 def now():
@@ -243,6 +261,36 @@ def get_or_create_project(db):
     return None
 
 
+def get_or_create_supplier(db):
+    """Возвращает (имя, контакты) поставщика и запоминает его в справочнике.
+
+    Работает как с проектами: можно выбрать из списка или вписать нового.
+    """
+    contacts = request.form.get("supplier_contacts", "").strip()
+    name = request.form.get("new_supplier", "").strip()
+    if not name:
+        supplier_id = request.form.get("supplier_id", "")
+        if supplier_id.isdigit():
+            row = db.execute("SELECT name FROM suppliers WHERE id = ?",
+                             (int(supplier_id),)).fetchone()
+            if row:
+                name = row["name"]
+    if not name:
+        return "", contacts
+    existing = db.execute("SELECT id, contacts FROM suppliers WHERE name = ?",
+                          (name,)).fetchone()
+    if existing:
+        if contacts and contacts != existing["contacts"]:
+            db.execute("UPDATE suppliers SET contacts = ? WHERE id = ?",
+                       (contacts, existing["id"]))
+        elif not contacts:
+            contacts = existing["contacts"]
+    else:
+        db.execute("INSERT INTO suppliers (name, contacts, created_at) "
+                   "VALUES (?, ?, ?)", (name, contacts, now()))
+    return name, contacts
+
+
 def parse_amount():
     raw = request.form.get("amount", "0").replace(" ", "").replace(",", ".")
     try:
@@ -272,8 +320,6 @@ def form_fields():
     return {
         "doc_type": doc_type if doc_type in DOC_TYPES else "invoice",
         "number": request.form.get("number", "").strip(),
-        "supplier_name": request.form.get("supplier_name", "").strip(),
-        "supplier_contacts": request.form.get("supplier_contacts", "").strip(),
         "pickup_info": request.form.get("pickup_info", "").strip(),
         "amount": parse_amount(),
         "vat_rate": vat_rate if vat_rate in VAT_RATES else "20",
@@ -285,12 +331,15 @@ def form_fields():
 def invoice_new():
     db = get_db()
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    suppliers = db.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
     if request.method == "POST":
         project_id = get_or_create_project(db)
         if project_id is None:
             flash("Укажите проект")
-            return render_template("form.html", invoice=None, projects=projects)
+            return render_template("form.html", invoice=None, projects=projects,
+                                   suppliers=suppliers)
         f = form_fields()
+        f["supplier_name"], f["supplier_contacts"] = get_or_create_supplier(db)
         cur = db.execute(
             "INSERT INTO invoices (project_id, doc_type, number, supplier_name,"
             " supplier_contacts, pickup_info, amount, vat_rate, comment,"
@@ -302,7 +351,8 @@ def invoice_new():
         db.commit()
         flash("Сохранено")
         return redirect(url_for("invoice_detail", invoice_id=cur.lastrowid))
-    return render_template("form.html", invoice=None, projects=projects)
+    return render_template("form.html", invoice=None, projects=projects,
+                           suppliers=suppliers)
 
 
 def load_invoice(db, invoice_id):
@@ -329,9 +379,11 @@ def invoice_edit(invoice_id):
     db = get_db()
     invoice = load_invoice(db, invoice_id)
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    suppliers = db.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
     if request.method == "POST":
         project_id = get_or_create_project(db) or invoice["project_id"]
         f = form_fields()
+        f["supplier_name"], f["supplier_contacts"] = get_or_create_supplier(db)
         db.execute(
             "UPDATE invoices SET project_id=?, doc_type=?, number=?,"
             " supplier_name=?, supplier_contacts=?, pickup_info=?, amount=?,"
@@ -343,7 +395,8 @@ def invoice_edit(invoice_id):
         db.commit()
         flash("Изменения сохранены")
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
-    return render_template("form.html", invoice=invoice, projects=projects)
+    return render_template("form.html", invoice=invoice, projects=projects,
+                           suppliers=suppliers)
 
 
 @app.route("/invoices/<int:invoice_id>/status", methods=["POST"])
