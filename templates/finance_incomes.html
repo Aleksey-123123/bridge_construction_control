@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Поступления — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<div class="detail-head">
+  <h1>План поступлений</h1>
+  <a class="btn btn-primary" href="{{ url_for('finance.income_new') }}">+ Добавить</a>
+</div>
+
+<div class="summary">
+  <span class="chip">Ожидается (чистыми): <b class="pos">{{ waiting|money }} ₽</b></span>
+</div>
+
+{% if not items %}
+  <p class="empty">Пока нет плана поступлений. Добавьте авансы и график КС по каждому объекту.</p>
+{% endif %}
+
+<div class="cards">
+{% for it in items %}
+  {% set r = it.row %}
+  <div class="card income-{{ r.status }}">
+    <div class="card-top">
+      <span class="badge badge-kind-{{ r.kind }}">{{ INCOME_KINDS[r.kind] }}{% if r.title %} {{ r.title }}{% endif %}</span>
+      <span class="badge badge-inc-{{ r.status }}">{{ INCOME_STATUSES[r.status] }}</span>
+    </div>
+    <div class="card-main">
+      <div class="card-supplier">{{ r.project_name }}</div>
+      <div class="card-amount">{{ r.amount|money }} ₽</div>
+    </div>
+    <div class="card-sub">
+      <span>{{ month_label(r.plan_month) }}
+        {% if r.status != 'paid' and it.expected %} · деньги ≈ {{ it.expected.strftime('%d.%m.%Y') }}{% endif %}
+        {% if r.status == 'paid' and r.paid_date %} · оплачен {{ r.paid_date }}{% endif %}</span>
+      <span>чистыми {{ it.net|money }} ₽{% if it.retention %} · удержание {{ it.retention|money }} ₽{% endif %}</span>
+    </div>
+    <div class="row-actions">
+      {% if r.status == 'plan' %}
+      <form method="post" action="{{ url_for('finance.income_status', income_id=r.id) }}">
+        <input type="hidden" name="status" value="signed">
+        <button class="btn btn-sm" type="submit">✍ Подписан</button>
+      </form>
+      {% endif %}
+      {% if r.status != 'paid' %}
+      <form method="post" action="{{ url_for('finance.income_status', income_id=r.id) }}">
+        <input type="hidden" name="status" value="paid">
+        <button class="btn btn-sm btn-paid" type="submit">✔ Оплачен</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('finance.income_status', income_id=r.id) }}">
+        <input type="hidden" name="status" value="plan">
+        <button class="btn btn-sm" type="submit">↩ В план</button>
+      </form>
+      {% endif %}
+      <a class="btn btn-sm" href="{{ url_for('finance.income_edit', income_id=r.id) }}">✏</a>
+      <form method="post" action="{{ url_for('finance.income_delete', income_id=r.id) }}"
+            onsubmit="return confirm('Удалить поступление?')">
+        <button class="btn btn-sm btn-danger" type="submit">✕</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+{% endblock %}

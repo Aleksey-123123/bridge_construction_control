@@ -37,6 +37,8 @@
 
 <dl class="props">
   <dt>Проект</dt><dd>{{ invoice.project_name }}</dd>
+  {% if invoice.due_date %}<dt>Оплатить до</dt><dd>{{ invoice.due_date }}{% if invoice.is_critical %} · <b>критичный</b>{% endif %}</dd>
+  {% elif invoice.is_critical %}<dt>Критичность</dt><dd><b>Критичный — без него встанет этап</b></dd>{% endif %}
   <dt>Поставщик</dt><dd>{{ invoice.supplier_name or '—' }}</dd>
   <dt>Контакты</dt><dd class="pre">{{ invoice.supplier_contacts or '—' }}</dd>
   <dt>Откуда и как забирать</dt><dd class="pre">{{ invoice.pickup_info or '—' }}</dd>

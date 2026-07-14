@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Платёжный календарь — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>Платёжный календарь</h1>
+
+<div class="summary">
+  <span class="chip">Остаток: <b>{{ cal.start_balance|money }} ₽</b>
+    {% if cal.snapshot %} на {{ cal.snapshot.snap_date }}{% endif %}</span>
+  <span class="chip">Поступления за {{ cal.weeks|length }} нед.: <b class="pos">+{{ cal.total_in|money }} ₽</b></span>
+  <span class="chip">Платежи: <b class="neg">−{{ cal.total_out|money }} ₽</b></span>
+</div>
+
+{% if not cal.snapshot %}
+  <div class="alert alert-warn">Введите остаток денег на счетах — без него прогноз считается от нуля.</div>
+{% elif cal.snapshot_stale %}
+  <div class="alert alert-warn">Остаток обновлялся {{ cal.snapshot.snap_date }} — обновите, чтобы прогноз был точным.</div>
+{% endif %}
+
+{% if cal.min_balance < 0 %}
+  <div class="alert alert-danger">⚠ Кассовый разрыв: <b>{{ cal.min_balance|money }} ₽</b> около {{ cal.min_date.strftime('%d.%m.%Y') }}</div>
+{% else %}
+  <div class="alert alert-ok">Минимум прогноза: <b>{{ cal.min_balance|money }} ₽</b> ({{ cal.min_date.strftime('%d.%m.%Y') }}) — разрывов не видно</div>
+{% endif %}
+
+<form class="balance-form" method="post" action="{{ url_for('finance.balance_update') }}">
+  <input type="text" inputmode="decimal" name="amount" placeholder="Остаток на счетах, ₽" required>
+  <input type="date" name="snap_date" value="{{ cal.today.isoformat() }}">
+  <button class="btn btn-primary" type="submit">Обновить остаток</button>
+</form>
+
+<h2>Прогноз по неделям</h2>
+<div class="weeks">
+{% for w in cal.weeks %}
+  <details class="week {{ 'week-danger' if w.min_balance < 0 }}" {% if loop.index <= 2 %}open{% endif %}>
+    <summary>
+      <span class="week-range">{{ w.start.strftime('%d.%m') }} – {{ w.end.strftime('%d.%m') }}</span>
+      <span class="week-flows">
+        {% if w.income %}<span class="pos">+{{ w.income|money }}</span>{% endif %}
+        {% if w.expense %}<span class="neg">−{{ w.expense|money }}</span>{% endif %}
+      </span>
+      <span class="week-balance {{ 'neg' if w.end_balance < 0 else '' }}">{{ w.end_balance|money }} ₽</span>
+    </summary>
+    {% if w.events %}
+    <ul class="events">
+      {% for e in w.events %}
+      <li>
+        <span class="event-date">{{ e.date.strftime('%d.%m') }}</span>
+        <a class="event-label" href="{{ e.url }}">{{ e.label }}{% if e.note %} <em>({{ e.note }})</em>{% endif %}</a>
+        <span class="event-amount {{ 'pos' if e.flow == 'in' else 'neg' }}">{{ '+' if e.flow == 'in' else '−' }}{{ e.amount|money }}</span>
+        <span class="event-balance {{ 'neg' if e.balance_after < 0 }}">{{ e.balance_after|money }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Нет движений на этой неделе.</p>
+    {% endif %}
+  </details>
+{% endfor %}
+</div>
+
+{% if cal.undated_invoices %}
+<h2>Счета без срока оплаты — не попадают в прогноз</h2>
+<p class="hint">Итого {{ cal.undated_total|money }} ₽. Откройте счёт и укажите «Оплатить до», чтобы он учитывался в календаре.</p>
+<div class="cards">
+  {% for i in cal.undated_invoices %}
+  <a class="card status-new" href="{{ url_for('invoice_detail', invoice_id=i.id) }}">
+    <div class="card-main">
+      <div class="card-supplier">{{ i.supplier_name or 'Поставщик не указан' }}{% if i.number %} · № {{ i.number }}{% endif %}</div>
+      <div class="card-amount">{{ i.amount|money }} ₽</div>
+    </div>
+    <div class="card-sub"><span>{{ i.project_name }}</span><span>указать срок оплаты →</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

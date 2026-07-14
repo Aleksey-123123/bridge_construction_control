@@ -9,16 +9,12 @@ import io
 import os
 import sqlite3
 import uuid
-from datetime import datetime
 
 from flask import (Flask, Response, abort, flash, g, redirect, render_template,
                    request, send_file, session, url_for)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "data"))
-DB_PATH = os.path.join(DATA_DIR, "invoices.db")
-UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
-SECRET_FILE = os.path.join(DATA_DIR, ".secret")
+import finance
+from db import DB_PATH, SECRET_FILE, UPLOAD_DIR, get_db, now
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "")  # пусто = без пароля
 
@@ -32,10 +28,9 @@ VAT_RATES = ["22", "20", "10", "7", "5", "0", "none"]
 VAT_LABELS = {"22": "НДС 22%", "20": "НДС 20%", "10": "НДС 10%",
               "7": "НДС 7%", "5": "НДС 5%", "0": "НДС 0%", "none": "Без НДС"}
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+app.register_blueprint(finance.bp)
 
 if not os.path.exists(SECRET_FILE):
     with open(SECRET_FILE, "w") as f:
@@ -83,14 +78,6 @@ CREATE TABLE IF NOT EXISTS attachments (
 """
 
 
-def get_db():
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-    return g.db
-
-
 @app.teardown_appcontext
 def close_db(_exc):
     db = g.pop("db", None)
@@ -100,6 +87,7 @@ def close_db(_exc):
 
 with sqlite3.connect(DB_PATH) as _conn:
     _conn.executescript(SCHEMA)
+    finance.init_db(_conn)
     # Один раз переносим уже внесённых поставщиков в справочник,
     # чтобы они появились в выпадающем списке с их контактами.
     if _conn.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0] == 0:
@@ -112,10 +100,6 @@ with sqlite3.connect(DB_PATH) as _conn:
             "  MIN(i.created_at) "
             "FROM invoices i WHERE i.supplier_name <> '' "
             "GROUP BY i.supplier_name")
-
-
-def now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
 def vat_amount(amount, vat_rate):
@@ -131,7 +115,10 @@ def vat_amount(amount, vat_rate):
 
 app.jinja_env.globals.update(
     DOC_TYPES=DOC_TYPES, STATUSES=STATUSES,
-    VAT_RATES=VAT_RATES, VAT_LABELS=VAT_LABELS, vat_amount=vat_amount)
+    VAT_RATES=VAT_RATES, VAT_LABELS=VAT_LABELS, vat_amount=vat_amount,
+    BG_CATEGORIES=finance.BG_CATEGORIES, INCOME_KINDS=finance.INCOME_KINDS,
+    INCOME_STATUSES=finance.INCOME_STATUSES,
+    REC_CATEGORIES=finance.REC_CATEGORIES)
 
 
 @app.template_filter("money")
@@ -317,6 +304,7 @@ def save_attachments(db, invoice_id):
 def form_fields():
     doc_type = request.form.get("doc_type", "invoice")
     vat_rate = request.form.get("vat_rate", "20")
+    group_id = request.form.get("budget_group_id", "")
     return {
         "doc_type": doc_type if doc_type in DOC_TYPES else "invoice",
         "number": request.form.get("number", "").strip(),
@@ -324,7 +312,17 @@ def form_fields():
         "amount": parse_amount(),
         "vat_rate": vat_rate if vat_rate in VAT_RATES else "20",
         "comment": request.form.get("comment", "").strip(),
+        "due_date": request.form.get("due_date", "").strip() or None,
+        "is_critical": 1 if request.form.get("is_critical") else 0,
+        "budget_group_id": int(group_id) if group_id.isdigit() else None,
     }
+
+
+def budget_groups_for_form(db):
+    return db.execute(
+        "SELECT bg.id, bg.name, bg.project_id, p.name AS project_name "
+        "FROM budget_groups bg JOIN projects p ON p.id = bg.project_id "
+        "ORDER BY p.name, bg.name").fetchall()
 
 
 @app.route("/invoices/new", methods=["GET", "POST"])
@@ -332,27 +330,30 @@ def invoice_new():
     db = get_db()
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
     suppliers = db.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
+    groups = budget_groups_for_form(db)
     if request.method == "POST":
         project_id = get_or_create_project(db)
         if project_id is None:
             flash("Укажите проект")
             return render_template("form.html", invoice=None, projects=projects,
-                                   suppliers=suppliers)
+                                   suppliers=suppliers, groups=groups)
         f = form_fields()
         f["supplier_name"], f["supplier_contacts"] = get_or_create_supplier(db)
         cur = db.execute(
             "INSERT INTO invoices (project_id, doc_type, number, supplier_name,"
             " supplier_contacts, pickup_info, amount, vat_rate, comment,"
-            " created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            " due_date, is_critical, budget_group_id, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (project_id, f["doc_type"], f["number"], f["supplier_name"],
              f["supplier_contacts"], f["pickup_info"], f["amount"],
-             f["vat_rate"], f["comment"], now()))
+             f["vat_rate"], f["comment"], f["due_date"], f["is_critical"],
+             f["budget_group_id"], now()))
         save_attachments(db, cur.lastrowid)
         db.commit()
         flash("Сохранено")
         return redirect(url_for("invoice_detail", invoice_id=cur.lastrowid))
     return render_template("form.html", invoice=None, projects=projects,
-                           suppliers=suppliers)
+                           suppliers=suppliers, groups=groups)
 
 
 def load_invoice(db, invoice_id):
@@ -380,6 +381,7 @@ def invoice_edit(invoice_id):
     invoice = load_invoice(db, invoice_id)
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
     suppliers = db.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
+    groups = budget_groups_for_form(db)
     if request.method == "POST":
         project_id = get_or_create_project(db) or invoice["project_id"]
         f = form_fields()
@@ -387,16 +389,18 @@ def invoice_edit(invoice_id):
         db.execute(
             "UPDATE invoices SET project_id=?, doc_type=?, number=?,"
             " supplier_name=?, supplier_contacts=?, pickup_info=?, amount=?,"
-            " vat_rate=?, comment=? WHERE id=?",
+            " vat_rate=?, comment=?, due_date=?, is_critical=?,"
+            " budget_group_id=? WHERE id=?",
             (project_id, f["doc_type"], f["number"], f["supplier_name"],
              f["supplier_contacts"], f["pickup_info"], f["amount"],
-             f["vat_rate"], f["comment"], invoice_id))
+             f["vat_rate"], f["comment"], f["due_date"], f["is_critical"],
+             f["budget_group_id"], invoice_id))
         save_attachments(db, invoice_id)
         db.commit()
         flash("Изменения сохранены")
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
     return render_template("form.html", invoice=invoice, projects=projects,
-                           suppliers=suppliers)
+                           suppliers=suppliers, groups=groups)
 
 
 @app.route("/invoices/<int:invoice_id>/status", methods=["POST"])

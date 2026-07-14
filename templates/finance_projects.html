@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Проекты — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>Проекты</h1>
+<p class="hint">Проекты создаются при добавлении счёта. Здесь настраиваются финансовые параметры и бюджет.</p>
+
+{% if not projects %}
+  <p class="empty">Проектов пока нет — добавьте первый счёт или КП.</p>
+{% endif %}
+
+<div class="cards">
+{% for p in projects %}
+  <a class="card" href="{{ url_for('finance.project', project_id=p.id) }}">
+    <div class="card-main">
+      <div class="card-supplier">{{ p.name }}</div>
+      <div class="card-amount">{{ p.budget_total|money }} ₽</div>
+    </div>
+    <div class="card-sub">
+      <span>{{ p.customer or 'заказчик не указан' }}</span>
+      <span>план дохода {{ p.income_total|money }} · оплачено {{ p.paid_total|money }}</span>
+    </div>
+    <div class="card-sub">
+      <span>генподряд {{ p.gp_percent or 0 }}% · удержание {{ p.retention_percent or 0 }}%</span>
+      <span>оплата через {{ p.pay_delay_days or 0 }} дн.</span>
+    </div>
+  </a>
+{% endfor %}
+</div>
+
+{% endblock %}

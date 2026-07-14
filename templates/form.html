@@ -59,6 +59,25 @@
     </div>
   </div>
 
+  <div class="row2">
+    <div>
+      <label>Оплатить до</label>
+      <input type="date" name="due_date" value="{{ invoice.due_date or '' if invoice else '' }}">
+    </div>
+    <div>
+      <label>Группа бюджета</label>
+      <select name="budget_group_id" id="budget_group_select">
+        <option value="">— не привязан —</option>
+        {% for g in groups %}
+          <option value="{{ g.id }}" data-project="{{ g.project_id }}"
+            {% if invoice and invoice.budget_group_id == g.id %}selected{% endif %}>{{ g.project_name }} · {{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <label class="check-label"><input type="checkbox" name="is_critical"
+    {% if invoice and invoice.is_critical %}checked{% endif %}> Критичный — без него встанет этап</label>
+
   <label>Комментарий</label>
   <textarea name="comment" rows="2">{{ invoice.comment if invoice else '' }}</textarea>
 
@@ -83,6 +102,24 @@
       if (c) box.value = c;            // подставляем сохранённые контакты
       if (sel.value && newInput) newInput.value = '';
     });
+  }
+  // группы бюджета: показываем только группы выбранного проекта
+  var proj = document.querySelector('select[name="project_id"]');
+  var grp = document.getElementById('budget_group_select');
+  function filterGroups() {
+    if (!proj || !grp) return;
+    var pid = proj.value;
+    for (var i = 0; i < grp.options.length; i++) {
+      var o = grp.options[i];
+      var gp = o.getAttribute('data-project');
+      var hide = !!(gp && pid && gp !== pid);
+      o.hidden = hide;
+      if (hide && o.selected) grp.value = '';
+    }
+  }
+  if (proj && grp) {
+    proj.addEventListener('change', filterGroups);
+    filterGroups();
   }
 })();
 </script>

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Постоянные расходы — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>Постоянные расходы</h1>
+<div class="summary">
+  <span class="chip">В месяц: <b class="neg">{{ monthly_total|money }} ₽</b></span>
+</div>
+<p class="hint">Зарплата, налоги, аренда, офис — скелет платёжного календаря. Забытые налоги = заблокированный счёт, поэтому вносите всё.</p>
+
+{% if rows %}
+<div class="table-wrap">
+<table class="table">
+  <tr><th>Расход</th><th>День</th><th class="num">Сумма</th><th></th></tr>
+  {% for r in rows %}
+  <tr class="{{ 'row-off' if not r.active }}">
+    <td>{{ r.name }}<div class="cell-sub">{{ REC_CATEGORIES[r.category] }}{% if not r.active %} · выключен{% endif %}</div></td>
+    <td>{{ r.day_of_month }}-го</td>
+    <td class="num">{{ r.amount|money }}</td>
+    <td class="num">
+      <a class="btn btn-sm" href="{{ url_for('finance.recurring', edit=r.id) }}#rec-form">✏</a>
+      <form class="inline-form" method="post" action="{{ url_for('finance.recurring_toggle', rec_id=r.id) }}">
+        <button class="btn btn-sm" type="submit">{{ '⏸' if r.active else '▶' }}</button>
+      </form>
+      <form class="inline-form" method="post" action="{{ url_for('finance.recurring_delete', rec_id=r.id) }}"
+            onsubmit="return confirm('Удалить «{{ r.name }}»?')">
+        <button class="btn btn-sm btn-danger" type="submit">✕</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="empty">Пока пусто. Добавьте зарплату, аренду, налоги, лизинги.</p>
+{% endif %}
+
+<h2 id="rec-form">{{ 'Изменить расход' if edit_row else 'Добавить расход' }}</h2>
+<form class="form" method="post" action="{{ url_for('finance.recurring') }}">
+  {% if edit_row %}<input type="hidden" name="edit_id" value="{{ edit_row.id }}">{% endif %}
+  <label>Название</label>
+  <input type="text" name="name" value="{{ edit_row.name if edit_row else '' }}" placeholder="Например: Зарплата ИТР" required>
+  <div class="row2">
+    <div>
+      <label>Категория</label>
+      <select name="category">
+        {% for k, v in REC_CATEGORIES.items() %}
+          <option value="{{ k }}" {% if edit_row and edit_row.category == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>День месяца</label>
+      <input type="number" name="day_of_month" value="{{ edit_row.day_of_month if edit_row else 10 }}" min="1" max="31">
+    </div>
+  </div>
+  <label>Сумма в месяц, ₽</label>
+  <input type="text" inputmode="decimal" name="amount" value="{{ edit_row.amount if edit_row else '' }}" required>
+  <label>Комментарий</label>
+  <textarea name="comment" rows="2">{{ edit_row.comment if edit_row else '' }}</textarea>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ 'Сохранить' if edit_row else 'Добавить' }}</button>
+    {% if edit_row %}<a class="btn" href="{{ url_for('finance.recurring') }}">Отмена</a>{% endif %}
+  </div>
+</form>
+
+{% endblock %}

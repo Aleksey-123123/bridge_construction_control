@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>{{ project.name }}</h1>
+
+<form class="form" method="post">
+  <label>Заказчик</label>
+  <input type="text" name="customer" value="{{ project.customer or '' }}">
+  <div class="row2">
+    <div>
+      <label>Генподряд, %</label>
+      <input type="text" inputmode="decimal" name="gp_percent" value="{{ project.gp_percent or 0 }}">
+    </div>
+    <div>
+      <label>Гарантийное удержание, %</label>
+      <input type="text" inputmode="decimal" name="retention_percent" value="{{ project.retention_percent or 0 }}">
+    </div>
+  </div>
+  <div class="row2">
+    <div>
+      <label>Возврат удержания через, мес.</label>
+      <input type="number" name="retention_months" value="{{ project.retention_months or 12 }}" min="0" max="60">
+    </div>
+    <div>
+      <label>Реальная задержка оплаты, дней</label>
+      <input type="number" name="pay_delay_days" value="{{ project.pay_delay_days or 30 }}" min="0" max="365">
+    </div>
+  </div>
+  <p class="hint">Задержка — через сколько дней после подписания КС реально приходят деньги от этого заказчика.</p>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Сохранить параметры</button>
+  </div>
+</form>
+
+<h2>Бюджет проекта</h2>
+<div class="summary">
+  <span class="chip">По смете: <b>{{ totals.smeta|money }} ₽</b></span>
+  <span class="chip">Оценка: <b>{{ totals.estimate|money }} ₽</b></span>
+  <span class="chip">Оплачено: <b>{{ totals.fact|money }} ₽</b></span>
+  <span class="chip">Счета в работе: <b>{{ totals.pending|money }} ₽</b></span>
+</div>
+
+{% if groups %}
+<div class="table-wrap">
+<table class="table">
+  <tr><th>Группа</th><th>Месяц</th><th class="num">Смета</th><th class="num">Оценка</th><th class="num">Оплачено</th><th></th></tr>
+  {% for g in groups %}
+  <tr class="{{ 'row-off' if g.off_smeta }}">
+    <td>{{ g.name }}{% if g.off_smeta %} <span class="badge badge-off">вне сметы</span>{% endif %}
+      <div class="cell-sub">{{ BG_CATEGORIES[g.category] }}</div></td>
+    <td>{{ month_label(g.plan_month) }}</td>
+    <td class="num">{{ g.smeta_amount|money }}</td>
+    <td class="num">{{ (g.estimate_amount if g.estimate_amount is not none else g.smeta_amount)|money }}
+      {% if g.estimate_amount is not none and g.estimate_amount != g.smeta_amount %}
+        <div class="cell-sub {{ 'neg' if g.estimate_amount > g.smeta_amount else 'pos' }}">
+          {{ '+' if g.estimate_amount > g.smeta_amount }}{{ (g.estimate_amount - g.smeta_amount)|money }}</div>
+      {% endif %}</td>
+    <td class="num">{{ g.fact|money }}
+      {% if g.pending %}<div class="cell-sub">+{{ g.pending|money }} в работе</div>{% endif %}</td>
+    <td class="num">
+      <a class="btn btn-sm" href="{{ url_for('finance.project', project_id=project.id, group=g.id) }}#group-form">✏</a>
+      <form class="inline-form" method="post" action="{{ url_for('finance.group_delete', group_id=g.id) }}"
+            onsubmit="return confirm('Удалить группу «{{ g.name }}»?')">
+        <button class="btn btn-sm btn-danger" type="submit">✕</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="empty">Групп бюджета пока нет. Разбейте смету на 15–30 укрупнённых групп — по ним будет вестись план-факт.</p>
+{% endif %}
+
+<h2 id="group-form">{{ 'Изменить группу' if edit_group else 'Добавить группу' }}</h2>
+<form class="form" method="post"
+      action="{{ url_for('finance.group_edit', group_id=edit_group.id) if edit_group else url_for('finance.group_add', project_id=project.id) }}">
+  <label>Название</label>
+  <input type="text" name="name" value="{{ edit_group.name if edit_group else '' }}" placeholder="Например: Деформационные швы" required>
+  <div class="row2">
+    <div>
+      <label>Категория</label>
+      <select name="category">
+        {% for k, v in BG_CATEGORIES.items() %}
+          <option value="{{ k }}" {% if edit_group and edit_group.category == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Плановый месяц расхода</label>
+      <input type="month" name="plan_month" value="{{ edit_group.plan_month if edit_group else '' }}">
+    </div>
+  </div>
+  <div class="row2">
+    <div>
+      <label>По смете, ₽</label>
+      <input type="text" inputmode="decimal" name="smeta_amount" value="{{ edit_group.smeta_amount if edit_group else '' }}">
+    </div>
+    <div>
+      <label>Текущая оценка, ₽ (пусто = по смете)</label>
+      <input type="text" inputmode="decimal" name="estimate_amount"
+             value="{{ edit_group.estimate_amount if edit_group and edit_group.estimate_amount is not none else '' }}">
+    </div>
+  </div>
+  <label class="check-label"><input type="checkbox" name="off_smeta" {% if edit_group and edit_group.off_smeta %}checked{% endif %}> Вне сметы (не предусмотрено контрактом)</label>
+  <label>Комментарий</label>
+  <textarea name="comment" rows="2">{{ edit_group.comment if edit_group else '' }}</textarea>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ 'Сохранить' if edit_group else 'Добавить группу' }}</button>
+    {% if edit_group %}<a class="btn" href="{{ url_for('finance.project', project_id=project.id) }}">Отмена</a>{% endif %}
+  </div>
+</form>
+
+{% endblock %}

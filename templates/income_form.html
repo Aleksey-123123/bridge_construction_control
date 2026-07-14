@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Изменить' if income else 'Новое' }} поступление — Деньги{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>{{ 'Изменить поступление' if income else 'Новое поступление' }}</h1>
+
+<form class="form" method="post">
+  <label>Тип</label>
+  <div class="seg">
+    {% for k, v in INCOME_KINDS.items() %}
+    <label class="seg-item">
+      <input type="radio" name="kind" value="{{ k }}"
+        {% if (income and income.kind == k) or (not income and k == 'ks') %}checked{% endif %}>
+      <span>{{ v }}</span>
+    </label>
+    {% endfor %}
+  </div>
+
+  <label>Проект</label>
+  <select name="project_id" required>
+    <option value="">— выберите проект —</option>
+    {% for p in projects %}
+      <option value="{{ p.id }}" {% if income and income.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Название (например «КС-3» или «за опоры»)</label>
+  <input type="text" name="title" value="{{ income.title if income else '' }}">
+
+  <div class="row2">
+    <div>
+      <label>Сумма по документу, ₽</label>
+      <input type="text" inputmode="decimal" name="amount" value="{{ income.amount if income else '' }}" required>
+    </div>
+    <div>
+      <label>Месяц подписания</label>
+      <input type="month" name="plan_month" value="{{ income.plan_month if income else '' }}" required>
+    </div>
+  </div>
+  <p class="hint">Дата прихода денег считается сама: конец месяца подписания + задержка оплаты заказчика (настраивается в проекте). % генподряда и удержание вычитаются автоматически.</p>
+
+  {% if income %}
+  <div class="row2">
+    <div>
+      <label>Дата подписания (факт)</label>
+      <input type="date" name="signed_date" value="{{ income.signed_date or '' }}">
+    </div>
+    <div>
+      <label>Дата оплаты (факт)</label>
+      <input type="date" name="paid_date" value="{{ income.paid_date or '' }}">
+    </div>
+  </div>
+  <label>Оплачено фактически, ₽</label>
+  <input type="text" inputmode="decimal" name="paid_amount" value="{{ income.paid_amount or '' }}">
+  {% endif %}
+
+  <label>Комментарий</label>
+  <textarea name="comment" rows="2">{{ income.comment if income else '' }}</textarea>
+
+  <div class="form-actions">
+    <button class="btn btn-primary btn-big" type="submit">Сохранить</button>
+    <a class="btn btn-big" href="{{ url_for('finance.incomes') }}">Отмена</a>
+  </div>
+</form>
+
+{% endblock %}

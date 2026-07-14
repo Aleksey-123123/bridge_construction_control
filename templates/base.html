@@ -13,7 +13,10 @@
 <body>
 <header class="topbar">
   <a class="brand" href="{{ url_for('index') }}">📋 Счета и КП</a>
-  <a class="btn btn-primary" href="{{ url_for('invoice_new') }}">+ Добавить</a>
+  <div class="topbar-actions">
+    <a class="btn btn-topbar" href="{{ url_for('finance.calendar') }}">💰 Деньги</a>
+    <a class="btn btn-primary" href="{{ url_for('invoice_new') }}">+ Добавить</a>
+  </div>
 </header>
 {% with messages = get_flashed_messages() %}
   {% if messages %}

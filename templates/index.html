@@ -50,7 +50,7 @@
     </div>
     {% if i.comment %}<div class="card-note">{{ i.comment|truncate(100, True, '…') }}</div>{% endif %}
     <div class="card-sub">
-      <span>{{ i.project_name }}</span>
+      <span>{{ i.project_name }}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
       <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>
     </div>
   </a>

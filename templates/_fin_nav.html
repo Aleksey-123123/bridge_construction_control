@@ -1,0 +1,6 @@
+<nav class="tabs">
+  <a class="{{ 'active' if tab == 'calendar' }}" href="{{ url_for('finance.calendar') }}">📅 Календарь</a>
+  <a class="{{ 'active' if tab == 'incomes' }}" href="{{ url_for('finance.incomes') }}">💵 Поступления</a>
+  <a class="{{ 'active' if tab == 'projects' }}" href="{{ url_for('finance.projects') }}">🏗 Проекты</a>
+  <a class="{{ 'active' if tab == 'recurring' }}" href="{{ url_for('finance.recurring') }}">🔁 Постоянные</a>
+</nav>
