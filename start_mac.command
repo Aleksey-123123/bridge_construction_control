@@ -7,6 +7,11 @@ cd "$(dirname "$0")"
 # export APP_PASSWORD="ofis2026"
 # Оставьте пустым, чтобы заходить без пароля.
 export APP_PASSWORD=""
+
+# ИИ-разбор сметы (необязательно). Впишите ключ Anthropic:
+# export ANTHROPIC_API_KEY="sk-ant-ваш-ключ"
+# Пусто — функция выключена, группы бюджета вносятся вручную.
+export ANTHROPIC_API_KEY=""
 # ==============================================
 
 if ! command -v python3 >/dev/null 2>&1; then

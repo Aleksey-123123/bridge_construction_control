@@ -28,19 +28,31 @@
       <input type="number" name="pay_delay_days" value="{{ project.pay_delay_days or 30 }}" min="0" max="365">
     </div>
   </div>
+  <label>Итоговая цена контракта, ₽</label>
+  <input type="text" inputmode="decimal" name="contract_price" value="{{ project.contract_price or '' }}">
   <p class="hint">Задержка — через сколько дней после подписания КС реально приходят деньги от этого заказчика.</p>
   <div class="form-actions">
     <button class="btn btn-primary" type="submit">Сохранить параметры</button>
   </div>
 </form>
 
-<h2>Бюджет проекта</h2>
+<div class="detail-head">
+  <h2>Бюджет проекта</h2>
+  <a class="btn btn-primary" href="{{ url_for('finance.smeta_upload', project_id=project.id) }}">📄 Загрузить смету (ИИ)</a>
+</div>
 <div class="summary">
+  {% if project.contract_price %}
+  <span class="chip">Цена контракта: <b>{{ project.contract_price|money }} ₽</b></span>
+  <span class="chip">Плановая маржа: <b class="{{ 'pos' if totals.margin >= 0 else 'neg' }}">{{ totals.margin|money }} ₽</b></span>
+  {% endif %}
   <span class="chip">По смете: <b>{{ totals.smeta|money }} ₽</b></span>
-  <span class="chip">Оценка: <b>{{ totals.estimate|money }} ₽</b></span>
+  <span class="chip">Оценка (себестоимость): <b>{{ totals.estimate|money }} ₽</b></span>
   <span class="chip">Оплачено: <b>{{ totals.fact|money }} ₽</b></span>
   <span class="chip">Счета в работе: <b>{{ totals.pending|money }} ₽</b></span>
 </div>
+{% if project.smeta_coefficient and project.smeta_coefficient != 1 %}
+<p class="hint">Смета приведена к контракту коэффициентом {{ '%.4f'|format(project.smeta_coefficient) }}.</p>
+{% endif %}
 
 {% if groups %}
 <div class="table-wrap">

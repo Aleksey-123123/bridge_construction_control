@@ -13,18 +13,22 @@
     (подписание + N месяцев) + та же задержка.
 """
 import calendar as _cal
+import csv
+import io
 from datetime import date, datetime, timedelta
 
 from flask import (Blueprint, abort, flash, redirect, render_template,
                    request, url_for)
 
+import ai
 from db import ensure_column, get_db, now
 
 bp = Blueprint("finance", __name__, url_prefix="/finance")
 
 HORIZON_WEEKS = 12
 
-BG_CATEGORIES = {"materials": "Материалы", "works": "Работы", "other": "Прочее"}
+BG_CATEGORIES = {"materials": "Материалы", "works": "Работы",
+                 "other": "Прочее", "penalty": "Штраф"}
 INCOME_KINDS = {"advance": "Аванс", "ks": "КС", "extra": "Допработы"}
 INCOME_STATUSES = {"plan": "План", "signed": "Подписан", "paid": "Оплачен"}
 REC_CATEGORIES = {"salary": "Зарплата", "tax": "Налоги", "rent": "Аренда",
@@ -86,6 +90,8 @@ def init_db(conn):
     ensure_column(conn, "projects", "retention_percent", "REAL NOT NULL DEFAULT 0")
     ensure_column(conn, "projects", "retention_months", "INTEGER NOT NULL DEFAULT 12")
     ensure_column(conn, "projects", "pay_delay_days", "INTEGER NOT NULL DEFAULT 30")
+    ensure_column(conn, "projects", "contract_price", "REAL NOT NULL DEFAULT 0")
+    ensure_column(conn, "projects", "smeta_coefficient", "REAL NOT NULL DEFAULT 1")
     # счета: срок оплаты, критичность, привязка к бюджетной группе
     ensure_column(conn, "invoices", "due_date", "TEXT")
     ensure_column(conn, "invoices", "is_critical", "INTEGER NOT NULL DEFAULT 0")
@@ -492,12 +498,13 @@ def project(project_id):
         # отсутствующее в форме поле не затирает сохранённое значение
         db.execute(
             "UPDATE projects SET customer=?, gp_percent=?, retention_percent=?,"
-            " retention_months=?, pay_delay_days=? WHERE id=?",
+            " retention_months=?, pay_delay_days=?, contract_price=? WHERE id=?",
             (request.form.get("customer", proj["customer"] or "").strip(),
              parse_money("gp_percent", proj["gp_percent"] or 0),
              parse_money("retention_percent", proj["retention_percent"] or 0),
              parse_int("retention_months", proj["retention_months"] or 12),
              parse_int("pay_delay_days", proj["pay_delay_days"] or 30),
+             parse_money("contract_price", proj["contract_price"] or 0),
              project_id))
         db.commit()
         flash("Параметры проекта сохранены")
@@ -524,6 +531,8 @@ def project(project_id):
         "fact": sum(g_["fact"] for g_ in groups),
         "pending": sum(g_["pending"] for g_ in groups),
     }
+    # плановая маржа = цена контракта - плановая себестоимость (оценка групп)
+    totals["margin"] = (proj["contract_price"] or 0) - totals["estimate"]
     return render_template("finance_project.html", project=proj, groups=groups,
                            totals=totals, edit_group=edit_group, tab="projects",
                            month_label=month_label)
@@ -594,6 +603,120 @@ def group_delete(group_id):
     db.commit()
     flash("Группа удалена (счета остались, отвязаны от группы)")
     return redirect(url_for("finance.project", project_id=grp["project_id"]))
+
+
+# --- загрузка сметы через ИИ -------------------------------------------
+
+def extract_smeta_text(file, pasted):
+    """Достаёт текст сметы из вставленного текста или загруженного файла."""
+    if pasted and pasted.strip():
+        return pasted, None
+    if not file or not file.filename:
+        return "", None
+    name = file.filename.lower()
+    raw = file.read()
+    if name.endswith((".txt", ".csv")):
+        for enc in ("utf-8-sig", "utf-8", "cp1251"):
+            try:
+                return raw.decode(enc), None
+            except UnicodeDecodeError:
+                continue
+        return "", "Не удалось прочитать файл — попробуйте вставить текст."
+    if name.endswith((".xlsx", ".xlsm")):
+        try:
+            import openpyxl
+        except ImportError:
+            return "", ("Для чтения Excel установите зависимости "
+                        "(pip install -r requirements.txt) или вставьте текст.")
+        try:
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True,
+                                        data_only=True)
+        except Exception:
+            return "", "Не удалось открыть Excel — попробуйте вставить текст."
+        lines = []
+        for ws in wb.worksheets:
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) for c in row if c not in (None, "")]
+                if cells:
+                    lines.append("\t".join(cells))
+        return "\n".join(lines), None
+    return "", ("Поддерживаются .xlsx, .csv, .txt. Файлы PDF/DOC — "
+                "выгрузите в Excel или вставьте текст.")
+
+
+@bp.route("/projects/<int:project_id>/smeta", methods=["GET", "POST"])
+def smeta_upload(project_id):
+    db = get_db()
+    proj = load_project(db, project_id)
+    if request.method == "POST":
+        text, err = extract_smeta_text(request.files.get("file"),
+                                       request.form.get("pasted", ""))
+        if err:
+            flash(err)
+            return redirect(url_for("finance.smeta_upload", project_id=project_id))
+        data, err = ai.parse_smeta(text)
+        if err:
+            flash(err)
+            return redirect(url_for("finance.smeta_upload", project_id=project_id))
+        if not data["groups"]:
+            flash("ИИ не нашёл в тексте групп — проверьте, что это смета.")
+            return redirect(url_for("finance.smeta_upload", project_id=project_id))
+        groups_sum = round(sum(g["amount"] for g in data["groups"]), 2)
+        # цена контракта: что ввёл пользователь, иначе итог по смете
+        contract_price = parse_money("contract_price") or data["smeta_total"] \
+            or groups_sum
+        return render_template(
+            "smeta_review.html", project=proj, groups=data["groups"],
+            groups_sum=groups_sum, smeta_total=data["smeta_total"],
+            contract_price=contract_price, truncated=data.get("truncated"),
+            tab="projects")
+    return render_template("smeta_upload.html", project=proj, tab="projects",
+                           ai_enabled=ai.is_enabled())
+
+
+@bp.route("/projects/<int:project_id>/smeta/apply", methods=["POST"])
+def smeta_apply(project_id):
+    db = get_db()
+    load_project(db, project_id)
+    names = request.form.getlist("name")
+    cats = request.form.getlist("category")
+    amounts = request.form.getlist("amount")
+    include = set(request.form.getlist("include"))  # индексы отмеченных строк
+
+    contract_price = parse_money("contract_price")
+    # коэффициент: из формы (можно поправить руками) либо цена/сумма групп
+    base_sum = 0.0
+    rows = []
+    for idx, (nm, ct, am) in enumerate(zip(names, cats, amounts)):
+        if str(idx) not in include or not nm.strip():
+            continue
+        try:
+            val = round(float(str(am).replace(" ", "").replace(",", ".")), 2)
+        except ValueError:
+            val = 0.0
+        rows.append((idx, nm.strip(), ct if ct in BG_CATEGORIES else "materials",
+                     val))
+        base_sum += val
+
+    coeff = parse_money("coefficient")
+    if coeff <= 0:
+        coeff = round(contract_price / base_sum, 6) if (contract_price and base_sum) \
+            else 1.0
+
+    created = 0
+    for _idx, nm, ct, val in rows:
+        db.execute(
+            "INSERT INTO budget_groups (project_id, name, category, smeta_amount,"
+            " estimate_amount, plan_month, off_smeta, comment, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
+            (project_id, nm, ct, round(val * coeff, 2), None, "",
+             1 if ct == "penalty" else 0, "", now()))
+        created += 1
+    db.execute("UPDATE projects SET contract_price=?, smeta_coefficient=? WHERE id=?",
+               (contract_price, coeff, project_id))
+    db.commit()
+    flash(f"Добавлено групп: {created}. Коэффициент к смете: {coeff:g}")
+    return redirect(url_for("finance.project", project_id=project_id))
 
 
 # --- постоянные расходы -------------------------------------------------

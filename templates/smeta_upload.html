@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Загрузка сметы — {{ project.name }}{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>Загрузка сметы: {{ project.name }}</h1>
+
+{% if not ai_enabled %}
+<div class="alert alert-warn">
+  ИИ-разбор не подключён. Чтобы он заработал, задайте ключ <b>ANTHROPIC_API_KEY</b>
+  (в <code>start_windows.bat</code> строкой <code>set ANTHROPIC_API_KEY=...</code>).
+  Без ключа группы бюджета можно добавить вручную на странице проекта.
+</div>
+{% else %}
+<p class="hint">Загрузите файл сметы (Excel/CSV) или вставьте текст. ИИ разобьёт её
+на 15–30 укрупнённых групп — вы проверите и поправите перед сохранением.</p>
+{% endif %}
+
+<form class="form" method="post" enctype="multipart/form-data">
+  <label>Итоговая цена контракта, ₽ (по договору с заказчиком)</label>
+  <input type="text" inputmode="decimal" name="contract_price"
+         value="{{ project.contract_price or '' }}" placeholder="Например: 48 000 000">
+  <p class="hint">Смета часто в старых/базовых ценах. Мы посчитаем коэффициент
+    «цена контракта ÷ сумма по смете» и приведём группы к контракту (коэффициент
+    можно будет поправить).</p>
+
+  <label>Файл сметы (.xlsx, .csv, .txt)</label>
+  <input class="file-input" type="file" name="file" accept=".xlsx,.xlsm,.csv,.txt">
+
+  <label>…или вставьте текст сметы</label>
+  <textarea name="pasted" rows="8" placeholder="Скопируйте строки сметы сюда"></textarea>
+
+  <div class="form-actions">
+    <button class="btn btn-primary btn-big" type="submit" {% if not ai_enabled %}disabled{% endif %}>
+      Разобрать сметы через ИИ →</button>
+    <a class="btn btn-big" href="{{ url_for('finance.project', project_id=project.id) }}">Назад</a>
+  </div>
+</form>
+
+{% endblock %}

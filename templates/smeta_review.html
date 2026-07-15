@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Проверка сметы — {{ project.name }}{% endblock %}
+{% block content %}
+{% include "_fin_nav.html" %}
+
+<h1>Проверка разбивки: {{ project.name }}</h1>
+<p class="hint">ИИ предложил разбивку — проверьте названия, категории и суммы,
+снимите галочки с лишнего. В базу попадёт только то, что вы подтвердите.
+Суммы будут умножены на коэффициент.</p>
+
+{% if truncated %}
+<div class="alert alert-warn">Смета большая — разобрана только начальная часть.
+Проверьте, все ли группы на месте; недостающие добавьте вручную на странице проекта.</div>
+{% endif %}
+
+<form class="form" method="post" action="{{ url_for('finance.smeta_apply', project_id=project.id) }}">
+  <div class="row2">
+    <div>
+      <label>Итоговая цена контракта, ₽</label>
+      <input type="text" inputmode="decimal" id="contract_price" name="contract_price"
+             value="{{ contract_price }}">
+    </div>
+    <div>
+      <label>Коэффициент (пусто = цена ÷ сумма групп)</label>
+      <input type="text" inputmode="decimal" id="coefficient" name="coefficient"
+             placeholder="считается автоматически">
+    </div>
+  </div>
+  <p class="hint">Сумма групп по смете: <b id="groups_sum">{{ groups_sum|money }} ₽</b>
+    {% if smeta_total %}· итог в документе: {{ smeta_total|money }} ₽{% endif %}
+    · расчётный коэффициент: <b id="coeff_calc">—</b></p>
+
+  <div class="table-wrap">
+  <table class="table">
+    <tr><th>✓</th><th>Группа</th><th>Категория</th><th class="num">Сумма по смете, ₽</th></tr>
+    {% for g in groups %}
+    <tr>
+      <td><input type="checkbox" name="include" value="{{ loop.index0 }}" checked></td>
+      <td><input type="text" name="name" value="{{ g.name }}" style="min-width:180px"></td>
+      <td>
+        <select name="category">
+          {% for k, v in BG_CATEGORIES.items() %}
+            <option value="{{ k }}" {% if g.category == k %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td class="num"><input type="text" inputmode="decimal" name="amount"
+            class="amount-cell" value="{{ g.amount }}" style="width:120px;text-align:right"></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  <p class="hint">Категория «Штраф» автоматически помечается как «вне сметы».</p>
+
+  <div class="form-actions">
+    <button class="btn btn-primary btn-big" type="submit">Создать группы бюджета</button>
+    <a class="btn btn-big" href="{{ url_for('finance.smeta_upload', project_id=project.id) }}">Заново</a>
+  </div>
+</form>
+
+<script>
+(function () {
+  function num(v){ return parseFloat(String(v).replace(/\s/g,'').replace(',','.')) || 0; }
+  var price = document.getElementById('contract_price');
+  var coeffInput = document.getElementById('coefficient');
+  var calc = document.getElementById('coeff_calc');
+  var sumEl = document.getElementById('groups_sum');
+  function recalc(){
+    var s = 0;
+    document.querySelectorAll('tr').forEach(function(tr){
+      var cb = tr.querySelector('input[name="include"]');
+      var am = tr.querySelector('input[name="amount"]');
+      if (cb && cb.checked && am) s += num(am.value);
+    });
+    sumEl.textContent = s.toLocaleString('ru-RU',{minimumFractionDigits:2}) + ' ₽';
+    var c = (price && num(price.value) && s) ? (num(price.value)/s) : 1;
+    calc.textContent = c.toFixed(4);
+  }
+  document.addEventListener('input', recalc);
+  recalc();
+})();
+</script>
+
+{% endblock %}
