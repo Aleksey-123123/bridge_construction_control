@@ -32,8 +32,28 @@
 
   <div class="form-actions">
     <button class="btn btn-primary btn-big" type="submit" {% if not ai_enabled %}disabled{% endif %}>
-      Разобрать сметы через ИИ →</button>
+      Разобрать смету через ИИ →</button>
     <a class="btn btn-big" href="{{ url_for('finance.project', project_id=project.id) }}">Назад</a>
+  </div>
+</form>
+
+<h2>Без ключа: разбор в claude.ai (по подписке)</h2>
+<p class="hint">Если ключ API не подключён — разберите смету в claude.ai:
+создайте Проект, добавьте туда файл правил <code>docs/smeta-rules.md</code>
+(лежит в папке приложения), загрузите смету и попросите разбить.
+Claude выдаст строки вида «Название | Категория | Сумма» — вставьте их сюда,
+приложение само создаст группы (это бесплатно, ключ не нужен).</p>
+
+<form class="form" method="post" action="{{ url_for('finance.smeta_paste', project_id=project.id) }}">
+  <label>Итоговая цена контракта, ₽</label>
+  <input type="text" inputmode="decimal" name="contract_price"
+         value="{{ project.contract_price or '' }}" placeholder="Например: 48 000 000">
+  <label>Готовая разбивка (по одной группе в строке)</label>
+  <textarea name="breakdown" rows="10" placeholder="Деформационные швы | Материалы | 4000000
+Гидроизоляция | Работы | 2500000
+Штраф за просрочку | Штраф | 300000"></textarea>
+  <div class="form-actions">
+    <button class="btn btn-primary btn-big" type="submit">Импортировать разбивку →</button>
   </div>
 </form>
 

@@ -15,6 +15,7 @@
 import calendar as _cal
 import csv
 import io
+import re
 from datetime import date, datetime, timedelta
 
 from flask import (Blueprint, abort, flash, redirect, render_template,
@@ -672,6 +673,83 @@ def smeta_upload(project_id):
             tab="projects")
     return render_template("smeta_upload.html", project=proj, tab="projects",
                            ai_enabled=ai.is_enabled())
+
+
+def _to_float(s):
+    """Разбирает сумму из строки: '4 000 000,00 ₽', '4000000.5', '1 200' и т.п."""
+    s = re.sub(r"[^\d,.\-]", "", str(s or ""))
+    if not s:
+        return None
+    if "," in s and "." in s:          # '.' — разделитель тысяч, ',' — дробная
+        s = s.replace(".", "").replace(",", ".")
+    else:
+        s = s.replace(",", ".")
+    try:
+        return round(float(s), 2)
+    except ValueError:
+        return None
+
+
+def _category_from(text):
+    t = (text or "").lower()
+    if "штраф" in t:
+        return "penalty"
+    if "работ" in t:
+        return "works"
+    if "проч" in t or "other" in t:
+        return "other"
+    return "materials"
+
+
+def parse_pasted_breakdown(text):
+    """Разбирает готовую разбивку из claude.ai в группы (без ИИ, чистый код).
+
+    Формат строки: «Название | Категория | Сумма». Разделители: | ; таб.
+    Категория необязательна (тогда выводится по ключевым словам названия).
+    """
+    groups = []
+    for line in (text or "").splitlines():
+        line = line.strip().lstrip("-*•").strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in re.split(r"\s*[|;\t]\s*", line) if p.strip()]
+        if len(parts) < 2:
+            continue
+        # сумма — самое правое поле-число
+        amount, amount_i = None, None
+        for i in range(len(parts) - 1, -1, -1):
+            v = _to_float(parts[i])
+            if v is not None:
+                amount, amount_i = v, i
+                break
+        if amount is None or amount_i == 0:
+            continue                    # нужны и название, и сумма
+        name = parts[0]
+        middle = " ".join(parts[1:amount_i])
+        cat = _category_from(middle) if middle else _category_from(name)
+        # пропускаем строки-итоги
+        if name.lower().startswith(("итог", "всего", "total")):
+            continue
+        groups.append({"name": name[:200], "category": cat, "amount": amount})
+    return groups
+
+
+@bp.route("/projects/<int:project_id>/smeta/paste", methods=["POST"])
+def smeta_paste(project_id):
+    """Импорт готовой разбивки (из claude.ai) — без ИИ-ключа."""
+    db = get_db()
+    proj = load_project(db, project_id)
+    groups = parse_pasted_breakdown(request.form.get("breakdown", ""))
+    if not groups:
+        flash("Не удалось разобрать разбивку. Нужен формат по строкам: "
+              "Название | Категория | Сумма")
+        return redirect(url_for("finance.smeta_upload", project_id=project_id))
+    groups_sum = round(sum(g["amount"] for g in groups), 2)
+    contract_price = parse_money("contract_price") or groups_sum
+    return render_template("smeta_review.html", project=proj, groups=groups,
+                           groups_sum=groups_sum, smeta_total=groups_sum,
+                           contract_price=contract_price, truncated=False,
+                           tab="projects")
 
 
 @bp.route("/projects/<int:project_id>/smeta/apply", methods=["POST"])
