@@ -37,6 +37,7 @@
 
 <dl class="props">
   <dt>Проект</dt><dd>{{ invoice.project_name }}</dd>
+  <dt>Группа расходов</dt><dd>{{ invoice.group_name or '— не привязан —' }}</dd>
   {% if invoice.due_date %}<dt>Оплатить до</dt><dd>{{ invoice.due_date }}{% if invoice.is_critical %} · <b>критичный</b>{% endif %}</dd>
   {% elif invoice.is_critical %}<dt>Критичность</dt><dd><b>Критичный — без него встанет этап</b></dd>{% endif %}
   {% if invoice.in_plan %}<dt>В расчёте</dt><dd>✅ учитывается{% if invoice.doc_type == 'quote' %} (выбранное КП){% endif %}</dd>{% endif %}

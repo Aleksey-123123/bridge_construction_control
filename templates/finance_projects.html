@@ -12,25 +12,24 @@
 
 <div class="cards">
 {% for p in projects %}
-  <a class="card" href="{{ url_for('finance.project', project_id=p.id) }}">
-    <div class="card-main">
-      <div class="card-supplier">{{ p.name }}</div>
-      <div class="card-amount">{{ p.budget_total|money }} ₽</div>
+  {% set ostatok = (p.contract_price or 0) - p.paid_total - p.incoming_total - p.quote_plan_total %}
+  <a class="card project-card" href="{{ url_for('finance.project', project_id=p.id) }}">
+    <div class="pc-left">
+      <div class="pc-name">{{ p.name }}</div>
+      <div class="pc-customer">{{ p.customer or 'заказчик не указан' }}</div>
     </div>
-    <div class="card-sub">
-      <span>{{ p.customer or 'заказчик не указан' }}</span>
-      <span>план дохода {{ p.income_total|money }} · оплачено {{ p.paid_total|money }}</span>
-    </div>
-    <div class="card-sub">
-      <span>счета {{ p.invoice_total|money }} ₽</span>
-      <span>КП в расчёте {{ p.quote_plan_total|money }} ₽</span>
-    </div>
-    <div class="card-sub">
-      <span>генподряд {{ p.gp_percent or 0 }}% · удержание {{ p.retention_percent or 0 }}%</span>
-      <span>оплата через {{ p.pay_delay_days or 0 }} дн.</span>
+    <div class="pc-right">
+      <div class="pc-row"><span>Сумма контракта</span><b>{{ p.contract_price|money }} ₽</b></div>
+      <div class="pc-row"><span>План дохода</span><b>{{ p.income_total|money }} ₽</b></div>
+      <div class="pc-row"><span>Оплачено</span><b>{{ p.paid_total|money }} ₽</b></div>
+      <div class="pc-row"><span>Входящие счета</span><b>{{ p.incoming_total|money }} ₽</b></div>
+      <div class="pc-row"><span>КП в расчёте</span><b>{{ p.quote_plan_total|money }} ₽</b></div>
+      <div class="pc-row pc-total"><span>Остаток</span><b class="{{ 'pos' if ostatok >= 0 else 'neg' }}">{{ ostatok|money }} ₽</b></div>
     </div>
   </a>
 {% endfor %}
 </div>
+<p class="hint">Остаток = сумма контракта − оплачено − входящие счета − КП в расчёте.
+Генподряд, удержание и срок оплаты настраиваются внутри проекта.</p>
 
 {% endblock %}

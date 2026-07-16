@@ -226,6 +226,21 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .badge-inc-paid { background: #dcfce7; color: var(--green); }
 .badge-off { background: #fee2e2; color: var(--red); font-size: 11px; }
 .badge-inplan { background: #dcfce7; color: var(--green); }
+
+/* карточка проекта: слева проект/заказчик, справа показатели */
+.project-card { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.pc-name { font-weight: 700; font-size: 17px; }
+.pc-customer { color: var(--muted); font-size: 14px; margin-top: 3px; }
+.pc-right { min-width: 260px; }
+.pc-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 3px 0; color: var(--muted); }
+.pc-row b { color: var(--text); font-weight: 600; white-space: nowrap; }
+.pc-total { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 7px; font-size: 15px; }
+.pc-total span { color: var(--text); font-weight: 700; }
+.pc-total b { font-weight: 700; }
+@media (max-width: 560px) {
+  .project-card { flex-direction: column; }
+  .pc-right { min-width: 0; width: 100%; }
+}
 .income-paid { opacity: .6; }
 
 @media (min-width: 640px) {

@@ -480,7 +480,8 @@ def projects():
              WHERE i.project_id = p.id AND i.doc_type = 'invoice'
                AND i.status IN ('paid', 'received')) AS paid_total,
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
-             WHERE i.project_id = p.id AND i.doc_type = 'invoice') AS invoice_total,
+             WHERE i.project_id = p.id AND i.doc_type = 'invoice'
+               AND i.status = 'new') AS incoming_total,
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
              WHERE i.project_id = p.id AND i.doc_type = 'quote'
                AND i.in_plan = 1) AS quote_plan_total,
