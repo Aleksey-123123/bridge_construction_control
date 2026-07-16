@@ -81,12 +81,8 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .group-meta { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .group-meta b { color: var(--text); }
 
-/* карточки списка */
+/* карточки списка — всегда в один столбик (удобно и с телефона, и с ПК) */
 .cards { display: flex; flex-direction: column; gap: 10px; }
-/* на широком экране — две колонки, чтобы не пустовало место */
-@media (min-width: 820px) {
-  .cards { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
-}
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
   padding: 12px 14px; text-decoration: none; color: var(--text);
@@ -229,6 +225,7 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .badge-inc-signed { background: #fef3c7; color: var(--amber); }
 .badge-inc-paid { background: #dcfce7; color: var(--green); }
 .badge-off { background: #fee2e2; color: var(--red); font-size: 11px; }
+.badge-inplan { background: #dcfce7; color: var(--green); }
 .income-paid { opacity: .6; }
 
 @media (min-width: 640px) {

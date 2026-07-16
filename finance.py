@@ -98,6 +98,8 @@ def init_db(conn):
     ensure_column(conn, "invoices", "is_critical", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(conn, "invoices", "budget_group_id",
                   "INTEGER REFERENCES budget_groups(id)")
+    # «в расчёт» — выбранное КП из нескольких на один материал/работу
+    ensure_column(conn, "invoices", "in_plan", "INTEGER NOT NULL DEFAULT 0")
 
 
 # ------------------------------------------------------------------ даты
@@ -477,6 +479,11 @@ def projects():
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
              WHERE i.project_id = p.id AND i.doc_type = 'invoice'
                AND i.status IN ('paid', 'received')) AS paid_total,
+          (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
+             WHERE i.project_id = p.id AND i.doc_type = 'invoice') AS invoice_total,
+          (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
+             WHERE i.project_id = p.id AND i.doc_type = 'quote'
+               AND i.in_plan = 1) AS quote_plan_total,
           (SELECT COALESCE(SUM(ip.amount), 0) FROM income_plan ip
              WHERE ip.project_id = p.id) AS income_total
         FROM projects p ORDER BY p.name""").fetchall()

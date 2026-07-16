@@ -78,6 +78,10 @@
   <label class="check-label"><input type="checkbox" name="is_critical"
     {% if invoice and invoice.is_critical %}checked{% endif %}> Критичный — без него встанет этап</label>
 
+  <label class="check-label"><input type="checkbox" name="in_plan"
+    {% if invoice and invoice.in_plan %}checked{% endif %}> Учитывать в расчёте
+    <small>— для КП: отметьте одно, которое планируете оплатить (из нескольких на один материал/работу)</small></label>
+
   <label>Комментарий</label>
   <textarea name="comment" rows="2">{{ invoice.comment if invoice else '' }}</textarea>
 

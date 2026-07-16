@@ -54,7 +54,7 @@
   <a class="card status-{{ i.status }}" href="{{ url_for('invoice_detail', invoice_id=i.id) }}">
     <div class="card-top">
       <span class="badge badge-{{ i.doc_type }}">{{ DOC_TYPES[i.doc_type] }}{% if i.number %} № {{ i.number }}{% endif %}</span>
-      <span class="badge badge-status-{{ i.status }}">{{ STATUSES[i.status] }}</span>
+      <span>{% if i.doc_type == 'quote' and i.in_plan %}<span class="badge badge-inplan">★ в расчёте</span> {% endif %}<span class="badge badge-status-{{ i.status }}">{{ STATUSES[i.status] }}</span></span>
     </div>
     <div class="card-main">
       <div class="card-supplier">{{ i.supplier_name or 'Поставщик не указан' }}</div>

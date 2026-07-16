@@ -22,6 +22,10 @@
       <span>план дохода {{ p.income_total|money }} · оплачено {{ p.paid_total|money }}</span>
     </div>
     <div class="card-sub">
+      <span>счета {{ p.invoice_total|money }} ₽</span>
+      <span>КП в расчёте {{ p.quote_plan_total|money }} ₽</span>
+    </div>
+    <div class="card-sub">
       <span>генподряд {{ p.gp_percent or 0 }}% · удержание {{ p.retention_percent or 0 }}%</span>
       <span>оплата через {{ p.pay_delay_days or 0 }} дн.</span>
     </div>

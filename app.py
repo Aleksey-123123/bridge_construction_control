@@ -351,6 +351,7 @@ def form_fields():
         "due_date": request.form.get("due_date", "").strip() or None,
         "is_critical": 1 if request.form.get("is_critical") else 0,
         "budget_group_id": int(group_id) if group_id.isdigit() else None,
+        "in_plan": 1 if request.form.get("in_plan") else 0,
     }
 
 
@@ -378,12 +379,12 @@ def invoice_new():
         cur = db.execute(
             "INSERT INTO invoices (project_id, doc_type, number, supplier_name,"
             " supplier_contacts, pickup_info, amount, vat_rate, comment,"
-            " due_date, is_critical, budget_group_id, created_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " due_date, is_critical, budget_group_id, in_plan, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (project_id, f["doc_type"], f["number"], f["supplier_name"],
              f["supplier_contacts"], f["pickup_info"], f["amount"],
              f["vat_rate"], f["comment"], f["due_date"], f["is_critical"],
-             f["budget_group_id"], now()))
+             f["budget_group_id"], f["in_plan"], now()))
         save_attachments(db, cur.lastrowid)
         db.commit()
         flash("Сохранено")
@@ -427,11 +428,11 @@ def invoice_edit(invoice_id):
             "UPDATE invoices SET project_id=?, doc_type=?, number=?,"
             " supplier_name=?, supplier_contacts=?, pickup_info=?, amount=?,"
             " vat_rate=?, comment=?, due_date=?, is_critical=?,"
-            " budget_group_id=? WHERE id=?",
+            " budget_group_id=?, in_plan=? WHERE id=?",
             (project_id, f["doc_type"], f["number"], f["supplier_name"],
              f["supplier_contacts"], f["pickup_info"], f["amount"],
              f["vat_rate"], f["comment"], f["due_date"], f["is_critical"],
-             f["budget_group_id"], invoice_id))
+             f["budget_group_id"], f["in_plan"], invoice_id))
         save_attachments(db, invoice_id)
         db.commit()
         flash("Изменения сохранены")
