@@ -52,6 +52,7 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 }
 .search-row { grid-column: 1 / -1; display: flex; gap: 8px; }
 .search-row input { flex: 1; }
+.filters .filter-wide { grid-column: 1 / -1; }
 
 .summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
@@ -61,8 +62,31 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .chip b { color: var(--text); }
 .chip-link { color: var(--blue); text-decoration: none; }
 
+/* переключатель вида списка */
+.viewswitch { display: flex; gap: 6px; margin-bottom: 12px; }
+.viewswitch a {
+  padding: 7px 14px; border-radius: 999px; text-decoration: none;
+  color: var(--text); background: #fff; border: 1px solid var(--border);
+  font-size: 14px;
+}
+.viewswitch a.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* заголовок группы расходов */
+.group-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; margin: 20px 0 10px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+.group-head h3 { font-size: 16px; margin: 0; }
+.group-meta { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.group-meta b { color: var(--text); }
+
 /* карточки списка */
 .cards { display: flex; flex-direction: column; gap: 10px; }
+/* на широком экране — две колонки, чтобы не пустовало место */
+@media (min-width: 820px) {
+  .cards { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+}
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
   padding: 12px 14px; text-decoration: none; color: var(--text);

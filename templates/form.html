@@ -62,7 +62,7 @@
   <div class="row2">
     <div>
       <label>Оплатить до</label>
-      <input type="date" name="due_date" value="{{ invoice.due_date or '' if invoice else '' }}">
+      <input type="date" name="due_date" value="{{ invoice.due_date or '' if invoice else today }}">
     </div>
     <div>
       <label>Группа бюджета</label>

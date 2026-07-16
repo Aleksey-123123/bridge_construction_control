@@ -9,6 +9,7 @@ import io
 import os
 import sqlite3
 import uuid
+from datetime import date
 
 from flask import (Flask, Response, abort, flash, g, redirect, render_template,
                    request, send_file, session, url_for)
@@ -161,6 +162,7 @@ def apply_filters(where, params):
     project_id = request.args.get("project", "")
     doc_type = request.args.get("type", "")
     status = request.args.get("status", "")
+    group_id = request.args.get("group", "")
     q = request.args.get("q", "").strip()
     if project_id.isdigit():
         where.append("i.project_id = ?")
@@ -171,6 +173,11 @@ def apply_filters(where, params):
     if status in STATUSES:
         where.append("i.status = ?")
         params.append(status)
+    if group_id.isdigit():
+        where.append("i.budget_group_id = ?")
+        params.append(int(group_id))
+    elif group_id == "none":
+        where.append("i.budget_group_id IS NULL")
     if q:
         where.append("(i.supplier_name LIKE ? OR i.number LIKE ? "
                      "OR i.comment LIKE ? OR i.pickup_info LIKE ?)")
@@ -178,10 +185,27 @@ def apply_filters(where, params):
 
 
 INVOICE_SELECT = """
-SELECT i.*, p.name AS project_name,
+SELECT i.*, p.name AS project_name, bg.name AS group_name,
        (SELECT COUNT(*) FROM attachments a WHERE a.invoice_id = i.id) AS files
 FROM invoices i JOIN projects p ON p.id = i.project_id
+LEFT JOIN budget_groups bg ON bg.id = i.budget_group_id
 """
+
+
+def group_invoices(invoices):
+    """Группирует счета по группе расходов, считает итоги по каждой."""
+    buckets = {}
+    for r in invoices:
+        key = r["budget_group_id"] or 0
+        if key not in buckets:
+            buckets[key] = {"id": r["budget_group_id"],
+                            "name": r["group_name"] or "Без группы расходов",
+                            "invoices": [], "total": 0.0}
+        buckets[key]["invoices"].append(r)
+        buckets[key]["total"] += r["amount"]
+    sections = list(buckets.values())
+    sections.sort(key=lambda s: (s["id"] is None, s["name"].lower()))
+    return sections
 
 
 @app.route("/")
@@ -195,10 +219,22 @@ def index():
     sql += " ORDER BY i.id DESC"
     invoices = db.execute(sql, params).fetchall()
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    budget_groups = db.execute(
+        "SELECT bg.id, bg.name, p.name AS project_name FROM budget_groups bg "
+        "JOIN projects p ON p.id = bg.project_id "
+        "ORDER BY p.name, bg.name").fetchall()
     total = sum(r["amount"] for r in invoices)
     total_vat = sum(vat_amount(r["amount"], r["vat_rate"]) for r in invoices)
+    view = "groups" if request.args.get("view") == "groups" else "list"
+    sections = group_invoices(invoices) if view == "groups" else None
+    # аргументы фильтров без view — для переключателя вида и ссылок
+    base_args = {k: request.args.get(k) for k in
+                 ("project", "type", "status", "group", "q")
+                 if request.args.get(k)}
     return render_template("index.html", invoices=invoices, projects=projects,
-                           total=total, total_vat=total_vat)
+                           budget_groups=budget_groups, total=total,
+                           total_vat=total_vat, view=view, sections=sections,
+                           base_args=base_args)
 
 
 @app.route("/export.csv")
@@ -353,7 +389,8 @@ def invoice_new():
         flash("Сохранено")
         return redirect(url_for("invoice_detail", invoice_id=cur.lastrowid))
     return render_template("form.html", invoice=None, projects=projects,
-                           suppliers=suppliers, groups=groups)
+                           suppliers=suppliers, groups=groups,
+                           today=date.today().isoformat())
 
 
 def load_invoice(db, invoice_id):
@@ -400,7 +437,8 @@ def invoice_edit(invoice_id):
         flash("Изменения сохранены")
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
     return render_template("form.html", invoice=invoice, projects=projects,
-                           suppliers=suppliers, groups=groups)
+                           suppliers=suppliers, groups=groups,
+                           today=date.today().isoformat())
 
 
 @app.route("/invoices/<int:invoice_id>/status", methods=["POST"])

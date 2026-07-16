@@ -2,6 +2,7 @@
 {% block content %}
 
 <form class="filters" method="get" action="{{ url_for('index') }}">
+  {% if view == 'groups' %}<input type="hidden" name="view" value="groups">{% endif %}
   <select name="project" onchange="this.form.submit()">
     <option value="">Все проекты</option>
     {% for p in projects %}
@@ -20,6 +21,13 @@
       <option value="{{ k }}" {% if request.args.get('status') == k %}selected{% endif %}>{{ v }}</option>
     {% endfor %}
   </select>
+  <select name="group" class="filter-wide" onchange="this.form.submit()">
+    <option value="">Все группы расходов</option>
+    <option value="none" {% if request.args.get('group') == 'none' %}selected{% endif %}>— без группы —</option>
+    {% for g in budget_groups %}
+      <option value="{{ g.id }}" {% if request.args.get('group') == g.id|string %}selected{% endif %}>{{ g.project_name }} · {{ g.name }}</option>
+    {% endfor %}
+  </select>
   <div class="search-row">
     <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Поиск: поставщик, номер, комментарий…">
     <button class="btn" type="submit">Найти</button>
@@ -33,12 +41,16 @@
   <a class="chip chip-link" href="{{ url_for('export_csv', **request.args) }}">⬇ Excel (CSV)</a>
 </div>
 
+<div class="viewswitch">
+  <a class="{{ 'active' if view == 'list' }}" href="{{ url_for('index', **base_args) }}">☰ Списком</a>
+  <a class="{{ 'active' if view == 'groups' }}" href="{{ url_for('index', view='groups', **base_args) }}">🗂 По группам расходов</a>
+</div>
+
 {% if not invoices %}
   <p class="empty">Пока нет записей. Нажмите «+ Добавить», чтобы внести первый счёт или КП.</p>
 {% endif %}
 
-<div class="cards">
-{% for i in invoices %}
+{% macro invoice_card(i, show_group=True) %}
   <a class="card status-{{ i.status }}" href="{{ url_for('invoice_detail', invoice_id=i.id) }}">
     <div class="card-top">
       <span class="badge badge-{{ i.doc_type }}">{{ DOC_TYPES[i.doc_type] }}{% if i.number %} № {{ i.number }}{% endif %}</span>
@@ -50,11 +62,26 @@
     </div>
     {% if i.comment %}<div class="card-note">{{ i.comment|truncate(100, True, '…') }}</div>{% endif %}
     <div class="card-sub">
-      <span>{{ i.project_name }}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
+      <span>{{ i.project_name }}{% if show_group and i.group_name %} · {{ i.group_name }}{% endif %}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
       <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>
     </div>
   </a>
-{% endfor %}
-</div>
+{% endmacro %}
+
+{% if view == 'groups' %}
+  {% for s in sections %}
+  <div class="group-head">
+    <h3>{{ s.name }}</h3>
+    <span class="group-meta"><b>{{ s.total|money }} ₽</b> · {{ s.invoices|length }} шт.</span>
+  </div>
+  <div class="cards">
+    {% for i in s.invoices %}{{ invoice_card(i, show_group=False) }}{% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="cards">
+    {% for i in invoices %}{{ invoice_card(i) }}{% endfor %}
+  </div>
+{% endif %}
 
 {% endblock %}
