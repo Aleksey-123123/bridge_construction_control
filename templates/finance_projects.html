@@ -10,6 +10,24 @@
   <p class="empty">Проектов пока нет — добавьте первый счёт или КП.</p>
 {% endif %}
 
+{% if projects %}
+<div class="card project-card pc-summary">
+  <div class="pc-left">
+    <div class="pc-name">Итого по проектам</div>
+    <div class="pc-customer">проектов: {{ projects|length }}</div>
+  </div>
+  <div class="pc-right">
+    <div class="pc-row"><span>Сумма контракта</span><b>{{ totals.contract|money }} ₽</b></div>
+    <div class="pc-row"><span>План дохода (ждём)</span><b>{{ totals.income_pending|money }} ₽</b></div>
+    <div class="pc-row"><span>Поступившие деньги</span><b class="pos">{{ totals.income_received|money }} ₽</b></div>
+    <div class="pc-row"><span>Оплаченные счета</span><b>{{ totals.paid|money }} ₽</b></div>
+    <div class="pc-row"><span>Входящие счета</span><b>{{ totals.incoming|money }} ₽</b></div>
+    <div class="pc-row"><span>КП в расчёте</span><b>{{ totals.quote_plan|money }} ₽</b></div>
+    <div class="pc-row pc-total"><span>Остаток</span><b class="{{ 'pos' if totals.ostatok >= 0 else 'neg' }}">{{ totals.ostatok|money }} ₽</b></div>
+  </div>
+</div>
+{% endif %}
+
 <div class="cards">
 {% for p in projects %}
   {% set ostatok = (p.contract_price or 0) - p.income_received - p.paid_total - p.incoming_total - p.quote_plan_total %}

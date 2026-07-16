@@ -491,7 +491,19 @@ def projects():
              FROM income_plan ip
              WHERE ip.project_id = p.id AND ip.status = 'paid') AS income_received
         FROM projects p ORDER BY p.name""").fetchall()
-    return render_template("finance_projects.html", projects=rows, tab="projects")
+    totals = {
+        "contract": sum(r["contract_price"] or 0 for r in rows),
+        "income_pending": sum(r["income_pending"] for r in rows),
+        "income_received": sum(r["income_received"] for r in rows),
+        "paid": sum(r["paid_total"] for r in rows),
+        "incoming": sum(r["incoming_total"] for r in rows),
+        "quote_plan": sum(r["quote_plan_total"] for r in rows),
+    }
+    totals["ostatok"] = (totals["contract"] - totals["income_received"]
+                         - totals["paid"] - totals["incoming"]
+                         - totals["quote_plan"])
+    return render_template("finance_projects.html", projects=rows,
+                           totals=totals, tab="projects")
 
 
 def load_project(db, project_id):

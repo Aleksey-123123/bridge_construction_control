@@ -241,6 +241,11 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .pc-total { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 7px; font-size: 15px; }
 .pc-total span { color: var(--text); font-weight: 700; }
 .pc-total b { font-weight: 700; }
+.pc-summary {
+  background: #eff4ff; border-color: #c7d7fe; border-left-color: var(--blue);
+  margin-bottom: 12px;
+}
+.pc-summary .pc-name { color: var(--blue-dark); }
 @media (max-width: 560px) {
   .project-card { flex-direction: column; gap: 12px; }
   .pc-right { width: 100%; }
