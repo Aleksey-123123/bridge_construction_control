@@ -486,7 +486,10 @@ def projects():
              WHERE i.project_id = p.id AND i.doc_type = 'quote'
                AND i.in_plan = 1) AS quote_plan_total,
           (SELECT COALESCE(SUM(ip.amount), 0) FROM income_plan ip
-             WHERE ip.project_id = p.id) AS income_total
+             WHERE ip.project_id = p.id AND ip.status != 'paid') AS income_pending,
+          (SELECT COALESCE(SUM(COALESCE(ip.paid_amount, ip.amount)), 0)
+             FROM income_plan ip
+             WHERE ip.project_id = p.id AND ip.status = 'paid') AS income_received
         FROM projects p ORDER BY p.name""").fetchall()
     return render_template("finance_projects.html", projects=rows, tab="projects")
 

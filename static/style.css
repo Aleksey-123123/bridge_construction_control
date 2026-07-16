@@ -228,18 +228,22 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .badge-inplan { background: #dcfce7; color: var(--green); }
 
 /* карточка проекта: слева проект/заказчик, справа показатели */
-.project-card { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.project-card {
+  display: flex; justify-content: space-between; gap: 24px; align-items: flex-start;
+  max-width: 560px;   /* не растягивать на всю ширину — компактная плашка */
+}
+.pc-left { min-width: 0; }
 .pc-name { font-weight: 700; font-size: 17px; }
 .pc-customer { color: var(--muted); font-size: 14px; margin-top: 3px; }
-.pc-right { min-width: 260px; }
+.pc-right { width: 280px; flex: none; }
 .pc-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 3px 0; color: var(--muted); }
 .pc-row b { color: var(--text); font-weight: 600; white-space: nowrap; }
 .pc-total { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 7px; font-size: 15px; }
 .pc-total span { color: var(--text); font-weight: 700; }
 .pc-total b { font-weight: 700; }
 @media (max-width: 560px) {
-  .project-card { flex-direction: column; }
-  .pc-right { min-width: 0; width: 100%; }
+  .project-card { flex-direction: column; gap: 12px; }
+  .pc-right { width: 100%; }
 }
 .income-paid { opacity: .6; }
 

@@ -12,7 +12,7 @@
 
 <div class="cards">
 {% for p in projects %}
-  {% set ostatok = (p.contract_price or 0) - p.paid_total - p.incoming_total - p.quote_plan_total %}
+  {% set ostatok = (p.contract_price or 0) - p.income_received - p.paid_total - p.incoming_total - p.quote_plan_total %}
   <a class="card project-card" href="{{ url_for('finance.project', project_id=p.id) }}">
     <div class="pc-left">
       <div class="pc-name">{{ p.name }}</div>
@@ -20,8 +20,9 @@
     </div>
     <div class="pc-right">
       <div class="pc-row"><span>Сумма контракта</span><b>{{ p.contract_price|money }} ₽</b></div>
-      <div class="pc-row"><span>План дохода</span><b>{{ p.income_total|money }} ₽</b></div>
-      <div class="pc-row"><span>Оплачено</span><b>{{ p.paid_total|money }} ₽</b></div>
+      <div class="pc-row"><span>План дохода (ждём)</span><b>{{ p.income_pending|money }} ₽</b></div>
+      <div class="pc-row"><span>Поступившие деньги</span><b class="pos">{{ p.income_received|money }} ₽</b></div>
+      <div class="pc-row"><span>Оплаченные счета</span><b>{{ p.paid_total|money }} ₽</b></div>
       <div class="pc-row"><span>Входящие счета</span><b>{{ p.incoming_total|money }} ₽</b></div>
       <div class="pc-row"><span>КП в расчёте</span><b>{{ p.quote_plan_total|money }} ₽</b></div>
       <div class="pc-row pc-total"><span>Остаток</span><b class="{{ 'pos' if ostatok >= 0 else 'neg' }}">{{ ostatok|money }} ₽</b></div>
@@ -29,7 +30,8 @@
   </a>
 {% endfor %}
 </div>
-<p class="hint">Остаток = сумма контракта − оплачено − входящие счета − КП в расчёте.
-Генподряд, удержание и срок оплаты настраиваются внутри проекта.</p>
+<p class="hint">Остаток = сумма контракта − поступившие деньги − оплаченные счета
+− входящие счета − КП в расчёте. Заведённое поступление до оплаты — «план
+дохода», после оплаты переходит в «поступившие деньги».</p>
 
 {% endblock %}
