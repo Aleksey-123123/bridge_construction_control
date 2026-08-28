@@ -179,9 +179,15 @@ def apply_filters(where, params):
     elif group_id == "none":
         where.append("i.budget_group_id IS NULL")
     if q:
-        where.append("(i.supplier_name LIKE ? OR i.number LIKE ? "
-                     "OR i.comment LIKE ? OR i.pickup_info LIKE ?)")
-        params.extend([f"%{q}%"] * 4)
+        # Ищем по каждому слову отдельно: без учёта регистра (в т.ч. русские
+        # буквы), по части слова и в любом месте строки. Найдётся, только
+        # если все слова запроса встретились хоть в одном из полей.
+        fields = ("i.supplier_name", "i.number", "i.comment", "i.pickup_info",
+                  "p.name", "i.supplier_contacts")
+        for word in q.split():
+            where.append("(" + " OR ".join(
+                f"ulower({f}) LIKE ulower(?)" for f in fields) + ")")
+            params.extend([f"%{word}%"] * len(fields))
 
 
 INVOICE_SELECT = """
@@ -193,18 +199,17 @@ LEFT JOIN budget_groups bg ON bg.id = i.budget_group_id
 
 
 def group_invoices(invoices):
-    """Группирует счета по группе расходов, считает итоги по каждой."""
+    """Группирует счета по проектам, считает итоги по каждому."""
     buckets = {}
     for r in invoices:
-        key = r["budget_group_id"] or 0
+        key = r["project_id"]
         if key not in buckets:
-            buckets[key] = {"id": r["budget_group_id"],
-                            "name": r["group_name"] or "Без группы расходов",
+            buckets[key] = {"id": key, "name": r["project_name"],
                             "invoices": [], "total": 0.0}
         buckets[key]["invoices"].append(r)
         buckets[key]["total"] += r["amount"]
     sections = list(buckets.values())
-    sections.sort(key=lambda s: (s["id"] is None, s["name"].lower()))
+    sections.sort(key=lambda s: s["name"].lower())
     return sections
 
 
@@ -225,8 +230,8 @@ def index():
         "ORDER BY p.name, bg.name").fetchall()
     total = sum(r["amount"] for r in invoices)
     total_vat = sum(vat_amount(r["amount"], r["vat_rate"]) for r in invoices)
-    view = "groups" if request.args.get("view") == "groups" else "list"
-    sections = group_invoices(invoices) if view == "groups" else None
+    view = "projects" if request.args.get("view") == "projects" else "list"
+    sections = group_invoices(invoices) if view == "projects" else None
     # аргументы фильтров без view — для переключателя вида и ссылок
     base_args = {k: request.args.get(k) for k in
                  ("project", "type", "status", "group", "q")

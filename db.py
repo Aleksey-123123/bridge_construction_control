@@ -19,11 +19,21 @@ SECRET_FILE = os.path.join(DATA_DIR, ".secret")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+def ulower(value):
+    """Нижний регистр с поддержкой кириллицы.
+
+    Встроенный lower() в SQLite умеет только латиницу, поэтому регистр
+    русских букв приводим средствами Python.
+    """
+    return value.lower() if isinstance(value, str) else value
+
+
 def get_db():
     if "db" not in g:
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+        g.db.create_function("ulower", 1, ulower)
     return g.db
 
 

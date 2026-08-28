@@ -14,7 +14,6 @@
 <header class="topbar">
   <a class="brand" href="{{ url_for('index') }}">📋 Счета и КП</a>
   <div class="topbar-actions">
-    <a class="btn btn-topbar" href="{{ url_for('finance.calendar') }}">💰 Деньги</a>
     <a class="btn btn-primary" href="{{ url_for('invoice_new') }}">+ Добавить</a>
   </div>
 </header>
@@ -26,6 +25,7 @@
   {% endif %}
 {% endwith %}
 <main class="container">
+{% if not hide_nav %}{% include "_fin_nav.html" %}{% endif %}
 {% block content %}{% endblock %}
 </main>
 </body>

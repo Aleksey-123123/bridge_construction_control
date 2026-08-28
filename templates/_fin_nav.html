@@ -1,6 +1,8 @@
+{% set ep = request.endpoint or '' %}
 <nav class="tabs">
-  <a class="{{ 'active' if tab == 'calendar' }}" href="{{ url_for('finance.calendar') }}">📅 Календарь</a>
-  <a class="{{ 'active' if tab == 'incomes' }}" href="{{ url_for('finance.incomes') }}">💵 Поступления</a>
-  <a class="{{ 'active' if tab == 'projects' }}" href="{{ url_for('finance.projects') }}">🏗 Проекты</a>
-  <a class="{{ 'active' if tab == 'recurring' }}" href="{{ url_for('finance.recurring') }}">🔁 Постоянные</a>
+  <a class="{{ 'active' if ep in ('index', 'invoice_detail', 'invoice_new', 'invoice_edit') }}" href="{{ url_for('index') }}">📋 Счета</a>
+  <a class="{{ 'active' if ep in ('finance.calendar', 'finance.balance_update') }}" href="{{ url_for('finance.calendar') }}">📅 Календарь</a>
+  <a class="{{ 'active' if ep.startswith('finance.income') }}" href="{{ url_for('finance.incomes') }}">💵 Поступления</a>
+  <a class="{{ 'active' if ep.startswith(('finance.project', 'finance.group', 'finance.smeta')) }}" href="{{ url_for('finance.projects') }}">🏗 Проекты</a>
+  <a class="{{ 'active' if ep.startswith('finance.recurring') }}" href="{{ url_for('finance.recurring') }}">🔁 Постоянные</a>
 </nav>

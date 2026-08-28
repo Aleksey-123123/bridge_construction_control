@@ -2,7 +2,7 @@
 {% block content %}
 
 <form class="filters" method="get" action="{{ url_for('index') }}">
-  {% if view == 'groups' %}<input type="hidden" name="view" value="groups">{% endif %}
+  {% if view == 'projects' %}<input type="hidden" name="view" value="projects">{% endif %}
   <select name="project" onchange="this.form.submit()">
     <option value="">Все проекты</option>
     {% for p in projects %}
@@ -43,14 +43,14 @@
 
 <div class="viewswitch">
   <a class="{{ 'active' if view == 'list' }}" href="{{ url_for('index', **base_args) }}">☰ Списком</a>
-  <a class="{{ 'active' if view == 'groups' }}" href="{{ url_for('index', view='groups', **base_args) }}">🗂 По группам расходов</a>
+  <a class="{{ 'active' if view == 'projects' }}" href="{{ url_for('index', view='projects', **base_args) }}">🏗 По проектам</a>
 </div>
 
 {% if not invoices %}
   <p class="empty">Пока нет записей. Нажмите «+ Добавить», чтобы внести первый счёт или КП.</p>
 {% endif %}
 
-{% macro invoice_card(i, show_group=True) %}
+{% macro invoice_card(i, show_project=True) %}
   <a class="card status-{{ i.status }}" href="{{ url_for('invoice_detail', invoice_id=i.id) }}">
     <div class="card-top">
       <span class="badge badge-{{ i.doc_type }}">{{ DOC_TYPES[i.doc_type] }}{% if i.number %} № {{ i.number }}{% endif %}</span>
@@ -62,20 +62,20 @@
     </div>
     {% if i.comment %}<div class="card-note">{{ i.comment|truncate(100, True, '…') }}</div>{% endif %}
     <div class="card-sub">
-      <span>{{ i.project_name }}{% if show_group and i.group_name %} · {{ i.group_name }}{% endif %}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
+      <span>{% if show_project %}{{ i.project_name }}{% endif %}{% if i.group_name %}{% if show_project %} · {% endif %}{{ i.group_name }}{% endif %}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
       <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>
     </div>
   </a>
 {% endmacro %}
 
-{% if view == 'groups' %}
+{% if view == 'projects' %}
   {% for s in sections %}
   <div class="group-head">
     <h3>{{ s.name }}</h3>
     <span class="group-meta"><b>{{ s.total|money }} ₽</b> · {{ s.invoices|length }} шт.</span>
   </div>
   <div class="cards">
-    {% for i in s.invoices %}{{ invoice_card(i, show_group=False) }}{% endfor %}
+    {% for i in s.invoices %}{{ invoice_card(i, show_project=False) }}{% endfor %}
   </div>
   {% endfor %}
 {% else %}
