@@ -210,7 +210,8 @@ def invoice_events(db, today, end):
     rows = db.execute(
         "SELECT i.*, p.name AS project_name FROM invoices i "
         "JOIN projects p ON p.id = i.project_id "
-        "WHERE i.doc_type = 'invoice' AND i.status = 'new'").fetchall()
+        "WHERE i.doc_type = 'invoice' "
+        "AND i.status IN ('new', 'to_pay')").fetchall()
     events, undated = [], []
     for r in rows:
         due = parse_date(r["due_date"])
@@ -481,7 +482,7 @@ def projects():
                AND i.status IN ('paid', 'received')) AS paid_total,
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
              WHERE i.project_id = p.id AND i.doc_type = 'invoice'
-               AND i.status = 'new') AS incoming_total,
+               AND i.status IN ('new', 'to_pay')) AS incoming_total,
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
              WHERE i.project_id = p.id AND i.doc_type = 'quote'
                AND i.in_plan = 1) AS quote_plan_total,
@@ -540,7 +541,7 @@ def project(project_id):
                AND i.status IN ('paid', 'received')) AS fact,
           (SELECT COALESCE(SUM(i.amount), 0) FROM invoices i
              WHERE i.budget_group_id = bg.id AND i.doc_type = 'invoice'
-               AND i.status = 'new') AS pending
+               AND i.status IN ('new', 'to_pay')) AS pending
         FROM budget_groups bg WHERE bg.project_id = ?
         ORDER BY bg.off_smeta, bg.plan_month, bg.id""", (project_id,)).fetchall()
     edit_id = request.args.get("group", "")

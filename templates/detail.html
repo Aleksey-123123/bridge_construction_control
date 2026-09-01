@@ -14,24 +14,27 @@
   <small>{{ VAT_LABELS[invoice.vat_rate] }}{% if vat_amount(invoice.amount, invoice.vat_rate) %} — {{ vat_amount(invoice.amount, invoice.vat_rate)|money }} ₽{% endif %}</small>
 </div>
 
+{% macro status_button(value, label, css='btn') %}
+  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
+    <input type="hidden" name="status" value="{{ value }}">
+    <button class="{{ css }}" type="submit">{{ label }}</button>
+  </form>
+{% endmacro %}
+
 <div class="statusbar">
-  {% if invoice.status != 'new' %}
-  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
-    <input type="hidden" name="status" value="new">
-    <button class="btn" type="submit">↩ Вернуть во «Входящие»</button>
-  </form>
-  {% endif %}
+  {# Цепочка: Входящий → В оплату → Оплачен → Забрали.
+     Показываем следующий шаг и возможность отката на шаг назад. #}
   {% if invoice.status == 'new' %}
-  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
-    <input type="hidden" name="status" value="paid">
-    <button class="btn btn-paid btn-big" type="submit">✔ Оплачен</button>
-  </form>
-  {% endif %}
-  {% if invoice.status != 'received' %}
-  <form method="post" action="{{ url_for('invoice_status', invoice_id=invoice.id) }}">
-    <input type="hidden" name="status" value="received">
-    <button class="btn btn-received btn-big" type="submit">📦 Забрали</button>
-  </form>
+    {{ status_button('to_pay', '📝 В оплату', 'btn btn-topay btn-big') }}
+    {{ status_button('paid', '✔ Оплачен', 'btn btn-paid btn-big') }}
+  {% elif invoice.status == 'to_pay' %}
+    {{ status_button('paid', '✔ Оплачен', 'btn btn-paid btn-big') }}
+    {{ status_button('new', '↩ Вернуть во «Входящие»') }}
+  {% elif invoice.status == 'paid' %}
+    {{ status_button('received', '📦 Забрали', 'btn btn-received btn-big') }}
+    {{ status_button('to_pay', '↩ Вернуть в «В оплату»') }}
+  {% else %}
+    {{ status_button('paid', '↩ Вернуть в «Оплачен»') }}
   {% endif %}
 </div>
 

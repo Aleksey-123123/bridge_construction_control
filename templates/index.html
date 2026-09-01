@@ -56,13 +56,14 @@
       <span class="badge badge-{{ i.doc_type }}">{{ DOC_TYPES[i.doc_type] }}{% if i.number %} № {{ i.number }}{% endif %}</span>
       <span>{% if i.doc_type == 'quote' and i.in_plan %}<span class="badge badge-inplan">★ в расчёте</span> {% endif %}<span class="badge badge-status-{{ i.status }}">{{ STATUSES[i.status] }}</span></span>
     </div>
+    {# Главное — проект и что покупаем; поставщик и прочее ниже, мельче. #}
     <div class="card-main">
-      <div class="card-supplier">{{ i.supplier_name or 'Поставщик не указан' }}</div>
+      <div class="card-title">{% if show_project %}{{ i.project_name }}{% else %}{{ i.comment|truncate(70, True, '…') or i.supplier_name or 'Без описания' }}{% endif %}</div>
       <div class="card-amount">{{ i.amount|money }} ₽</div>
     </div>
-    {% if i.comment %}<div class="card-note">{{ i.comment|truncate(100, True, '…') }}</div>{% endif %}
+    {% if show_project and i.comment %}<div class="card-what">{{ i.comment|truncate(110, True, '…') }}</div>{% endif %}
     <div class="card-sub">
-      <span>{% if show_project %}{{ i.project_name }}{% endif %}{% if i.group_name %}{% if show_project %} · {% endif %}{{ i.group_name }}{% endif %}{% if i.status == 'new' and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
+      <span>{{ i.supplier_name or 'Поставщик не указан' }}{% if i.group_name %} · {{ i.group_name }}{% endif %}{% if i.status in ('new', 'to_pay') and i.due_date %} · оплатить до {{ i.due_date }}{% endif %}{% if i.is_critical %} · ❗критичный{% endif %}</span>
       <span>{{ VAT_LABELS[i.vat_rate] }}{% if i.files %} · 📎 {{ i.files }}{% endif %} · {{ i.created_at[:10] }}</span>
     </div>
   </a>

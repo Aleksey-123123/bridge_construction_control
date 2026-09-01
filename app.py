@@ -24,7 +24,10 @@ ALLOWED_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif",
 MAX_UPLOAD_MB = 25
 
 DOC_TYPES = {"invoice": "Счёт", "quote": "КП"}
-STATUSES = {"new": "Входящий", "paid": "Оплачен", "received": "Забрали"}
+STATUSES = {"new": "Входящий", "to_pay": "В оплату",
+            "paid": "Оплачен", "received": "Забрали"}
+# Статусы, при которых счёт ещё не оплачен (попадает в платёжный календарь).
+UNPAID_STATUSES = ("new", "to_pay")
 VAT_RATES = ["22", "20", "10", "7", "5", "0", "none"]
 VAT_LABELS = {"22": "НДС 22%", "20": "НДС 20%", "10": "НДС 10%",
               "7": "НДС 7%", "5": "НДС 5%", "0": "НДС 0%", "none": "Без НДС"}
@@ -63,7 +66,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     pickup_info TEXT DEFAULT '',
     amount REAL NOT NULL DEFAULT 0,
     vat_rate TEXT NOT NULL DEFAULT '20',           -- 22|20|10|7|5|0|none
-    status TEXT NOT NULL DEFAULT 'new',            -- new | paid | received
+    status TEXT NOT NULL DEFAULT 'new',            -- new | to_pay | paid | received
     comment TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     paid_at TEXT,
@@ -453,17 +456,20 @@ def invoice_status(invoice_id):
     if status not in STATUSES:
         abort(400)
     db = get_db()
-    load_invoice(db, invoice_id)
-    paid_at = now() if status in ("paid", "received") else None
-    received_at = now() if status == "received" else None
-    db.execute(
-        "UPDATE invoices SET status=?,"
-        " paid_at = CASE WHEN ? = 'new' THEN NULL"
-        "           WHEN paid_at IS NULL THEN ? ELSE paid_at END,"
-        " received_at = CASE WHEN ? = 'received' THEN"
-        "           COALESCE(received_at, ?) ELSE NULL END"
-        " WHERE id=?",
-        (status, status, paid_at, status, received_at, invoice_id))
+    invoice = load_invoice(db, invoice_id)
+    # Даты проставляются один раз и снимаются при возврате назад по цепочке
+    # Входящий → В оплату → Оплачен → Забрали.
+    paid_at, received_at = invoice["paid_at"], invoice["received_at"]
+    if status in UNPAID_STATUSES:          # ещё не оплачен
+        paid_at = received_at = None
+    elif status == "paid":
+        paid_at = paid_at or now()
+        received_at = None
+    elif status == "received":
+        paid_at = paid_at or now()
+        received_at = received_at or now()
+    db.execute("UPDATE invoices SET status=?, paid_at=?, received_at=? "
+               "WHERE id=?", (status, paid_at, received_at, invoice_id))
     db.commit()
     return redirect(request.form.get("back") or
                     url_for("invoice_detail", invoice_id=invoice_id))
