@@ -10,6 +10,16 @@ set APP_PASSWORD=
 REM ИИ-разбор сметы (необязательно). Впишите ключ Anthropic после "=":
 set ANTHROPIC_API_KEY=
 
+REM ---- Уведомления в Telegram (необязательно) ----
+REM Как получить токен и id чата — см. docs/telegram.md
+set TELEGRAM_BOT_TOKEN=
+set TELEGRAM_CHAT_ID=
+REM При каких статусах слать: to_pay,paid,received,new
+set NOTIFY_STATUSES=to_pay,paid
+REM Адрес приложения — чтобы в сообщении была рабочая ссылка на счёт:
+REM set APP_BASE_URL=https://scheta.вашакомпания.ru
+set APP_BASE_URL=
+
 REM Порт, на котором работает приложение. Менять обычно не нужно.
 set PORT=8000
 REM ====================================================

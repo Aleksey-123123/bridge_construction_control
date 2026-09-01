@@ -15,6 +15,7 @@ from flask import (Flask, Response, abort, flash, g, redirect, render_template,
                    request, send_file, session, url_for)
 
 import finance
+import notify
 from db import DB_PATH, SECRET_FILE, UPLOAD_DIR, get_db, now
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "")  # пусто = без пароля
@@ -471,6 +472,10 @@ def invoice_status(invoice_id):
     db.execute("UPDATE invoices SET status=?, paid_at=?, received_at=? "
                "WHERE id=?", (status, paid_at, received_at, invoice_id))
     db.commit()
+    if status != invoice["status"]:        # уведомляем только о реальной смене
+        notify.status_changed(
+            invoice, status, STATUSES[status], VAT_LABELS[invoice["vat_rate"]],
+            notify.invoice_link(invoice_id, request.url_root))
     return redirect(request.form.get("back") or
                     url_for("invoice_detail", invoice_id=invoice_id))
 

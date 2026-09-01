@@ -38,20 +38,42 @@
   {% endif %}
 </div>
 
-<dl class="props">
-  <dt>Проект</dt><dd>{{ invoice.project_name }}</dd>
-  <dt>Группа расходов</dt><dd>{{ invoice.group_name or '— не привязан —' }}</dd>
-  {% if invoice.due_date %}<dt>Оплатить до</dt><dd>{{ invoice.due_date }}{% if invoice.is_critical %} · <b>критичный</b>{% endif %}</dd>
-  {% elif invoice.is_critical %}<dt>Критичность</dt><dd><b>Критичный — без него встанет этап</b></dd>{% endif %}
-  {% if invoice.in_plan %}<dt>В расчёте</dt><dd>✅ учитывается{% if invoice.doc_type == 'quote' %} (выбранное КП){% endif %}</dd>{% endif %}
-  <dt>Поставщик</dt><dd>{{ invoice.supplier_name or '—' }}</dd>
-  <dt>Контакты</dt><dd class="pre">{{ invoice.supplier_contacts or '—' }}</dd>
-  <dt>Откуда и как забирать</dt><dd class="pre">{{ invoice.pickup_info or '—' }}</dd>
-  <dt>Комментарий</dt><dd class="pre">{{ invoice.comment or '—' }}</dd>
-  <dt>Создан</dt><dd>{{ invoice.created_at }}</dd>
-  {% if invoice.paid_at %}<dt>Оплачен</dt><dd>{{ invoice.paid_at }}</dd>{% endif %}
-  {% if invoice.received_at %}<dt>Забрали</dt><dd>{{ invoice.received_at }}</dd>{% endif %}
-</dl>
+{# Информация разбита на смысловые блоки: куда, у кого, что, когда. #}
+<section class="block">
+  <h3 class="block-head">🏗 Проект</h3>
+  <dl class="props">
+    <dt>Проект</dt><dd>{{ invoice.project_name }}</dd>
+    <dt>Группа расходов</dt><dd>{{ invoice.group_name or '— не привязан —' }}</dd>
+    {% if invoice.due_date %}<dt>Оплатить до</dt><dd>{{ invoice.due_date }}{% if invoice.is_critical %} · <b>критичный</b>{% endif %}</dd>
+    {% elif invoice.is_critical %}<dt>Критичность</dt><dd><b>Критичный — без него встанет этап</b></dd>{% endif %}
+    {% if invoice.in_plan %}<dt>В расчёте</dt><dd>✅ учитывается{% if invoice.doc_type == 'quote' %} (выбранное КП){% endif %}</dd>{% endif %}
+  </dl>
+</section>
+
+<section class="block">
+  <h3 class="block-head">📦 Что покупаем</h3>
+  <dl class="props">
+    <dd class="pre block-lead">{{ invoice.comment or '— не указано —' }}</dd>
+  </dl>
+</section>
+
+<section class="block">
+  <h3 class="block-head">🏢 Поставщик</h3>
+  <dl class="props">
+    <dt>Название</dt><dd>{{ invoice.supplier_name or '—' }}</dd>
+    <dt>Контакты</dt><dd class="pre">{{ invoice.supplier_contacts or '—' }}</dd>
+    <dt>Откуда и как забирать</dt><dd class="pre">{{ invoice.pickup_info or '—' }}</dd>
+  </dl>
+</section>
+
+<section class="block">
+  <h3 class="block-head">🕓 История</h3>
+  <dl class="props">
+    <dt>Создан</dt><dd>{{ invoice.created_at }}</dd>
+    {% if invoice.paid_at %}<dt>Оплачен</dt><dd>{{ invoice.paid_at }}</dd>{% endif %}
+    {% if invoice.received_at %}<dt>Забрали</dt><dd>{{ invoice.received_at }}</dd>{% endif %}
+  </dl>
+</section>
 
 <h2>Файлы</h2>
 {% if attachments %}

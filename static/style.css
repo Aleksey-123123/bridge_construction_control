@@ -87,13 +87,13 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
   padding: 12px 14px; text-decoration: none; color: var(--text);
-  border-left: 5px solid var(--muted);
+  border-left: 7px solid var(--muted);
 }
 /* Заливка всей карточки по статусу: Входящий → В оплату → Оплачен → Забрали */
-.card.status-new { border-left-color: #94a3b8; background: #f8fafc; }
-.card.status-to_pay { border-left-color: #ea580c; background: #fff7ed; }
-.card.status-paid { border-left-color: #2563eb; background: #eff6ff; }
-.card.status-received { border-left-color: #16a34a; background: #f0fdf4; }
+.card.status-new { border-left-color: #64748b; background: #e9edf3; }
+.card.status-to_pay { border-left-color: #c2410c; background: #ffe2c2; }
+.card.status-paid { border-left-color: #1d4ed8; background: #d3e4ff; }
+.card.status-received { border-left-color: #15803d; background: #cdf3d8; }
 
 .card-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .card-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
@@ -115,12 +115,14 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
   display: inline-block; padding: 3px 10px; border-radius: 999px;
   font-size: 13px; font-weight: 600;
 }
-.badge-invoice { background: #dbeafe; color: var(--blue-dark); }
-.badge-quote { background: #ede9fe; color: #5b21b6; }
-.badge-status-new { background: #e2e8f0; color: #334155; }
-.badge-status-to_pay { background: #ffedd5; color: #c2410c; }
-.badge-status-paid { background: #dbeafe; color: #1d4ed8; }
-.badge-status-received { background: #dcfce7; color: #15803d; }
+/* Белый фон, чтобы ярлык типа читался на любой заливке карточки */
+.badge-invoice { background: #fff; color: var(--blue-dark); border: 1px solid #bfdbfe; }
+.badge-quote { background: #fff; color: #5b21b6; border: 1px solid #ddd6fe; }
+/* Статус — сплошной цветной ярлык, виден сразу */
+.badge-status-new { background: #475569; color: #fff; }
+.badge-status-to_pay { background: #c2410c; color: #fff; }
+.badge-status-paid { background: #1d4ed8; color: #fff; }
+.badge-status-received { background: #15803d; color: #fff; }
 
 .empty { color: var(--muted); padding: 20px 0; }
 
@@ -147,11 +149,20 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .detail-amount small { display: block; font-size: 14px; color: var(--muted); font-weight: 400; }
 .statusbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
 .statusbar form { width: 100%; }
+/* Блоки на странице счёта: проект / что покупаем / поставщик / история */
+.block { margin-bottom: 14px; }
+.block-head {
+  font-size: 14px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+  margin: 0 0 6px 4px;
+}
+.block-lead { font-size: 17px; font-weight: 600; }
+
 .props {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 16px;
 }
-.props dt { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.props dt { font-size: 13px; color: var(--muted); margin-top: 12px; }
 .props dt:first-child { margin-top: 0; }
 .props dd { margin: 2px 0 0; }
 .pre { white-space: pre-wrap; }
